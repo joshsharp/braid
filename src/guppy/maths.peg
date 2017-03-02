@@ -1,0 +1,118 @@
+{
+package main
+
+type ValueType int
+
+const (
+    STRING = iota
+    INT
+    FLOAT
+    CONTAINER
+)
+
+type Ast struct {
+    Type string
+    StringValue string
+    IntValue int
+    FloatValue float64
+    ValueType ValueType
+    Subvalues []Ast
+}
+
+type Printable interface {
+    Print(indent int) string
+}
+
+type PrintableValue interface {
+    PrintValue() string
+}
+
+func (a *Ast) PrintValue() string {
+    switch (a.ValueType){
+        case STRING:
+            return a.StringValue
+        case INT:
+            return fmt.Sprintf("%d", a.IntValue)
+        case FLOAT:
+            return fmt.Sprintf("%f", a.FloatValue)
+    }
+    return "()"
+}
+
+func (a *Ast) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += fmt.Sprintf("%s %s:\n", a.Type, a.PrintValue())
+    for _, el := range(a.Subvalues){
+        str += el.Print(indent+1)
+    }
+    return str
+}
+
+func toIfaceSlice(v interface{}) []interface{} {
+    if v == nil {
+        return nil
+    }
+    return v.([]interface{})
+}
+
+func main(){
+    r := strings.NewReader("-4 + 50 * 2 / 55 + 8")
+    result, err := ParseReader("", r)
+    ast := result.(Ast)
+    fmt.Println("=", ast.Print(0))
+    fmt.Println(err)
+}
+
+}
+
+Expr = op:BinOp rest:(BinOp)* _ EOF {
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        subvalues := []Ast{op.(Ast)}
+        for _, el := range(vals){
+            subvalues = append(subvalues, el.(Ast))
+        }
+        return Ast{Type: "Expr", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    } else {
+        return Ast{Type: "Expr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
+    }
+}
+
+BinOp = _ first:Value __ op:Operator __ second:Expr {
+    ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
+        ValueType: CONTAINER}
+    return ast, nil
+} / _ first:Value __ op:Operator __ second:Value {
+    ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
+    ValueType: CONTAINER}
+    return ast, nil
+}
+
+
+Operator = ( '+' / '-' / '*' / '/' ) {
+    return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
+}
+
+Value = '(' _ expr:Expr _ ')' {
+    return expr.(Ast), nil
+} / num:Integer {
+    return num.(Ast), nil
+}
+
+Integer = '-'? [0-9]+ {
+    val, err := strconv.Atoi(string(c.text))
+    if err != nil {
+        return nil, err
+    }
+    return  Ast{Type:"Integer", IntValue:val, ValueType:INT}, nil
+}
+
+__ "sigwhitespace" = [ \r\n\t]+
+
+_ "whitespace" = [ \r\n\t]*
+
+EOF = !.

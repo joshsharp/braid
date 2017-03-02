@@ -1,0 +1,11 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/PuerkitoBio/pigeon",
+			"repository": "https://github.com/PuerkitoBio/pigeon",
+			"revision": "00949f7e8bae024d00576190ea052378944083d9",
+			"branch": "master"
+		}
+	]
+}
