@@ -7,12 +7,16 @@ const (
     STRING = iota
     INT
     FLOAT
+    BOOL
+    CHAR
     CONTAINER
 )
 
 type Ast struct {
     Type string
     StringValue string
+    CharValue rune
+    BoolValue bool
     IntValue int
     FloatValue float64
     ValueType ValueType
@@ -60,11 +64,12 @@ func toIfaceSlice(v interface{}) []interface{} {
 }
 
 func main(){
-    input := "(-4 + 50) * 2 / 55 + 8"
+    input := `-4 + -50.0 * 2 + 66.7 + "hi {boo}" / 'n'`
+    fmt.Println(input)
     r := strings.NewReader(input)
     result, err := ParseReader("", r)
     ast := result.(Ast)
-    fmt.Println(input)
+
     fmt.Println("=", ast.Print(0))
     fmt.Println(err)
 }
@@ -88,7 +93,8 @@ BinOp = _ first:Value __ op:Operator __ second:Expr {
     ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
         ValueType: CONTAINER}
     return ast, nil
-} / _ first:Value __ op:Operator __ second:Value {
+}
+/ _ first:Value __ op:Operator __ second:Value {
     ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
     ValueType: CONTAINER}
     return ast, nil
@@ -96,23 +102,57 @@ BinOp = _ first:Value __ op:Operator __ second:Expr {
 
 Operator = ( '*' / '/' / "/." / "*." ) {
     return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
-} / ( '+" / '-' / '+.' / '-.' ) {
+}
+/ ( '+' / '-' / "+." / "-." ) {
     return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-Value = num:Integer {
-    return num.(Ast), nil
-} / expr:Expr {
-    return expr.(Ast), nil
+Value = v:Const {
+    return v.(Ast), nil
 }
 
-Integer = '-'? [0-9]+ {
+Const = '-'? [0-9]+ !'.' {
     val, err := strconv.Atoi(string(c.text))
     if err != nil {
         return nil, err
     }
     return  Ast{Type:"Integer", IntValue:val, ValueType:INT}, nil
 }
+/ '-'? [0-9]+ '.' [0-9]+ {
+    val, err := strconv.ParseFloat(string(c.text),64)
+    if err != nil {
+        return nil, err
+    }
+    return  Ast{Type:"Float", FloatValue:val, ValueType:FLOAT}, nil
+}
+/ "True" / "False" {
+    if string(c.text) == "True" {
+        return Ast{Type:"Bool", BoolValue: true, ValueType:BOOL}, nil
+    }
+    return Ast{Type:"Bool", BoolValue: false, ValueType:BOOL}, nil
+}
+/ '"' (!EscapedChar .)* '"' {
+    val, err := strconv.Unquote(string(c.text))
+    if err == nil {
+        return Ast{Type:"String", StringValue: val, ValueType:STRING}, nil
+    }
+    return nil, err
+}
+/ "'" val:(!EscapedChar .) "'" {
+    return Ast{Type:"String", StringValue: string(c.text), ValueType:STRING}, nil
+}
+
+EscapedChar = [\x00-\x1f"\\]
+
+EscapeSequence = SingleCharEscape / UnicodeEscape
+
+SingleCharEscape = ["\\/bfnrt]
+
+DecimalDigit = [0-9]
+
+NonZeroDecimalDigit = [1-9]
+
+HexDigit = [0-9a-f]i
 
 __ "sigwhitespace" = [ \r\n\t]+
 
