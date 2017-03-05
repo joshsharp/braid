@@ -29,12 +29,19 @@ type Printable interface {
 }
 
 func main(){
-    input := `let a = -4 + 55.0 > 99 or "hi" ++ 'm'`
+    input := `
+let a = -4 + 55.0 > 99 or "hi" ++ 'm';
+let b = "cheese" ++ "ham";
+let c = 5.0;
+34 + 5;
+let go = fun num -> {
+    num + 5;
+};
+`
     fmt.Println(input)
     r := strings.NewReader(input)
     result, err := ParseReader("", r)
     ast := result.(Ast)
-
     fmt.Println("=", ast.Print(0))
     fmt.Println(err)
 }
@@ -75,7 +82,38 @@ func toIfaceSlice(v interface{}) []interface{} {
 
 }
 
-Expr = op:BinOp rest:(BinOp)* _ EOF {
+Module = _ expr:Statement _ rest:(Statement)* _ EOF {
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        subvalues := []Ast{expr.(Ast)}
+        for _, el := range(vals){
+            subvalues = append(subvalues, el.(Ast))
+        }
+        return Ast{Type: "Module", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    } else {
+        return Ast{Type: "Module", Subvalues: []Ast{expr.(Ast)}, ValueType:CONTAINER }, nil
+    }
+}
+
+Statement = "let" __ i:Identifier _ '=' _ expr:Expr ';' _ {
+    fmt.Printf("assignment: %s\n", string(c.text))
+    return Ast{Type: "Assignment", Subvalues: []Ast{i.(Ast),expr.(Ast)}, ValueType:CONTAINER }, nil
+} / expr:Expr ';' _ {
+    return expr.(Ast), nil
+}
+
+Expr = "fun" __ ids:(Identifier)* _ "->" _ '{' _ statements:(Statement)+ _ '}' _ {
+    fmt.Println("func", string(c.text))
+    subvalues := []Ast{}
+    vals := statements.([]interface{})
+    if len(vals) > 0 {
+        for _, el := range(vals){
+            subvalues = append(subvalues, el.(Ast))
+        }
+    }
+    return Ast{Type: "Func", Subvalues: subvalues, ValueType:CONTAINER }, nil
+}
+/ _ op:BinOp rest:(BinOp)* {
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{op.(Ast)}
@@ -86,9 +124,6 @@ Expr = op:BinOp rest:(BinOp)* _ EOF {
     } else {
         return Ast{Type: "Expr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
     }
-}
-/ "let" __ i:Identifier _ '=' _ expr:Expr _ EOF {
-    return Ast{Type: "Assignment", Subvalues: []Ast{i.(Ast),expr.(Ast)}, ValueType:CONTAINER }, nil
 }
 
 BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh
