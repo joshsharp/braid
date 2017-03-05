@@ -36,7 +36,7 @@ let c = 5.0;
 34 + 5;
 let go = fun num -> {
     num + 5;
-};
+}
 `
     fmt.Println(input)
     r := strings.NewReader(input)
@@ -101,8 +101,9 @@ Statement = "let" __ i:Identifier _ '=' _ expr:Expr ';' _ {
 } / expr:Expr ';' _ {
     return expr.(Ast), nil
 }
+/ FuncDefn
 
-Expr = "fun" __ ids:(Identifier)* _ "->" _ '{' _ statements:(Statement)+ _ '}' _ {
+FuncDefn = "fun" __ ids:(Identifier)* _ "->" _ '{' _ statements:(Statement)+ _ '}' _ {
     fmt.Println("func", string(c.text))
     subvalues := []Ast{}
     vals := statements.([]interface{})
@@ -113,7 +114,9 @@ Expr = "fun" __ ids:(Identifier)* _ "->" _ '{' _ statements:(Statement)+ _ '}' _
     }
     return Ast{Type: "Func", Subvalues: subvalues, ValueType:CONTAINER }, nil
 }
-/ _ op:BinOp rest:(BinOp)* {
+
+Expr = FuncDefn /
+_ op:BinOp rest:(BinOp)* {
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{op.(Ast)}
