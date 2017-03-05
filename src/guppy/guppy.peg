@@ -10,6 +10,7 @@ const (
     BOOL
     CHAR
     CONTAINER
+    NIL
 )
 
 type Ast struct {
@@ -28,7 +29,7 @@ type Printable interface {
 }
 
 func main(){
-    input := `-4 + -50.0 * 2 + 66.7 + "hi {boo}" / 'n'`
+    input := `let a = -4 + 55.0 > 99 or "hi" ++ 'm'`
     fmt.Println(input)
     r := strings.NewReader(input)
     result, err := ParseReader("", r)
@@ -86,62 +87,122 @@ Expr = op:BinOp rest:(BinOp)* _ EOF {
         return Ast{Type: "Expr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
     }
 }
+/ "let" __ i:Identifier _ '=' _ expr:Expr _ EOF {
+    return Ast{Type: "Assignment", Subvalues: []Ast{i.(Ast),expr.(Ast)}, ValueType:CONTAINER }, nil
+}
 
-BinOp = BinOpLow / BinOpHigh
+BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh
 
-BinOpLow = _ first:BinOpHigh rest:(__ op:OperatorLow __ second:BinOpHigh)* {
+BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
+            // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
             v := restExpr[3].(Ast)
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return Ast{Type: "Expr", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Ast{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
         return first.(Ast), nil
     }
-
-    //ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
-    //ValueType: CONTAINER}
-    //return ast, nil
 }
 
-BinOpHigh = _ first:Value rest:(__ op:OperatorHigh __ second:Value)* {
+BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
+            // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
             v := restExpr[3].(Ast)
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return Ast{Type: "Expr", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Ast{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    } else {
+        return first.(Ast), nil
+    }
+
+}
+
+BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        subvalues := []Ast{first.(Ast)}
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
+            subvalues = append(subvalues, op, v)
+        }
+        return Ast{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    } else {
+        return first.(Ast), nil
+    }
+
+}
+
+BinOpHigh = _ first:Value rest:(__ OperatorHigh __ Value)* {
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        subvalues := []Ast{first.(Ast)}
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
+            subvalues = append(subvalues, op, v)
+        }
+        return Ast{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
         return first.(Ast), nil
     }
 }
 
-Operator = OperatorHigh / OperatorLow
+Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
 
-OperatorHigh = ( '*' / '/' / "/." / "*." ) {
-    return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
+OperatorBoolean = ( "not" / "or" / "and" ) {
+    return Ast{Type:"BoolOp", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-OperatorLow = ( '+' / '-' / "+." / "-." ) {
-    return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
+OperatorEquality = ( ">=" / "<=" / '<' / '>' / "===" / "=="){
+    return Ast{Type:"EqualityOperator", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-Value = v:Const {
+OperatorHigh = ( "/." / "*." ) {
+    return Ast{Type:"FloatOperator", StringValue:string(c.text), ValueType:STRING}, nil
+}
+/ ( '*' / '/' / '^' ) {
+    return Ast{Type:"IntOperator", StringValue:string(c.text), ValueType:STRING}, nil
+}
+/ "++" {
+    return Ast{Type:"StringOperator", StringValue:string(c.text), ValueType:STRING}, nil
+}
+
+OperatorLow = ( "+." / "-." ) {
+    return Ast{Type:"FloatOperator", StringValue:string(c.text), ValueType:STRING}, nil
+}
+/ ( '+' / '-' ) {
+    return Ast{Type:"IntOperator", StringValue:string(c.text), ValueType:STRING}, nil
+}
+
+Value = Identifier / v:Const {
     return v.(Ast), nil
 }
 / '(' expr:Expr ')' {
     return expr.(Ast), nil
+}
+
+Identifier = ([a-z]+ [a-zA-Z0-9_]* / '_') {
+    return  Ast{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 Const = '-'? [0-9]+ !'.' {
@@ -163,6 +224,9 @@ Const = '-'? [0-9]+ !'.' {
         return Ast{Type:"Bool", BoolValue: true, ValueType:BOOL}, nil
     }
     return Ast{Type:"Bool", BoolValue: false, ValueType:BOOL}, nil
+}
+/ "()" {
+    return Ast{Type:"Nil", ValueType:NIL}, nil
 }
 / '"' (!EscapedChar .)* '"' {
     val, err := strconv.Unquote(string(c.text))
