@@ -27,14 +27,23 @@ type Printable interface {
     Print(indent int) string
 }
 
-type PrintableValue interface {
-    PrintValue() string
+func main(){
+    input := `-4 + -50.0 * 2 + 66.7 + "hi {boo}" / 'n'`
+    fmt.Println(input)
+    r := strings.NewReader(input)
+    result, err := ParseReader("", r)
+    ast := result.(Ast)
+
+    fmt.Println("=", ast.Print(0))
+    fmt.Println(err)
 }
 
-func (a *Ast) PrintValue() string {
+func (a *Ast) String() string {
     switch (a.ValueType){
         case STRING:
-            return a.StringValue
+            return fmt.Sprintf("\"%s\"", a.StringValue)
+        case CHAR:
+            return fmt.Sprintf("'%s'", string(a.CharValue))
         case INT:
             return fmt.Sprintf("%d", a.IntValue)
         case FLOAT:
@@ -49,7 +58,7 @@ func (a *Ast) Print(indent int) string {
     for i := 0; i < indent; i++ {
         str += "  "
     }
-    str += fmt.Sprintf("%s %s:\n", a.Type, a.PrintValue())
+    str += fmt.Sprintf("%s %s:\n", a.Type, a)
     for _, el := range(a.Subvalues){
         str += el.Print(indent+1)
     }
@@ -61,17 +70,6 @@ func toIfaceSlice(v interface{}) []interface{} {
         return nil
     }
     return v.([]interface{})
-}
-
-func main(){
-    input := `-4 + -50.0 * 2 + 66.7 + "hi {boo}" / 'n'`
-    fmt.Println(input)
-    r := strings.NewReader(input)
-    result, err := ParseReader("", r)
-    ast := result.(Ast)
-
-    fmt.Println("=", ast.Print(0))
-    fmt.Println(err)
 }
 
 }
@@ -89,26 +87,61 @@ Expr = op:BinOp rest:(BinOp)* _ EOF {
     }
 }
 
-BinOp = _ first:Value __ op:Operator __ second:Expr {
-    ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
-        ValueType: CONTAINER}
-    return ast, nil
-}
-/ _ first:Value __ op:Operator __ second:Value {
-    ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
-    ValueType: CONTAINER}
-    return ast, nil
+BinOp = BinOpLow / BinOpHigh
+
+BinOpLow = _ first:BinOpHigh rest:(__ op:OperatorLow __ second:BinOpHigh)* {
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        subvalues := []Ast{first.(Ast)}
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            restExpr := toIfaceSlice(v)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
+            subvalues = append(subvalues, op, v)
+        }
+        return Ast{Type: "Expr", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    } else {
+        return first.(Ast), nil
+    }
+
+    //ast := Ast{Type:"BinOp", Subvalues:[]Ast{first.(Ast), op.(Ast), second.(Ast)},
+    //ValueType: CONTAINER}
+    //return ast, nil
 }
 
-Operator = ( '*' / '/' / "/." / "*." ) {
+BinOpHigh = _ first:Value rest:(__ op:OperatorHigh __ second:Value)* {
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        subvalues := []Ast{first.(Ast)}
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            restExpr := toIfaceSlice(v)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
+            subvalues = append(subvalues, op, v)
+        }
+        return Ast{Type: "Expr", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    } else {
+        return first.(Ast), nil
+    }
+}
+
+Operator = OperatorHigh / OperatorLow
+
+OperatorHigh = ( '*' / '/' / "/." / "*." ) {
     return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
 }
-/ ( '+' / '-' / "+." / "-." ) {
+
+OperatorLow = ( '+' / '-' / "+." / "-." ) {
     return Ast{Type:"Op", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 Value = v:Const {
     return v.(Ast), nil
+}
+/ '(' expr:Expr ')' {
+    return expr.(Ast), nil
 }
 
 Const = '-'? [0-9]+ !'.' {
@@ -139,7 +172,7 @@ Const = '-'? [0-9]+ !'.' {
     return nil, err
 }
 / "'" val:(!EscapedChar .) "'" {
-    return Ast{Type:"String", StringValue: string(c.text), ValueType:STRING}, nil
+    return Ast{Type:"Char", CharValue: rune(c.text[1]), ValueType:CHAR}, nil
 }
 
 EscapedChar = [\x00-\x1f"\\]
