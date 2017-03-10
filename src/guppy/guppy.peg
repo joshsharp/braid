@@ -36,14 +36,11 @@ type Ast interface {
 
 func main(){
     input := `
-let a = -4 + 55.0 > 99 or "hi" ++ 'm';
-let b = "cheese" ++ "ham";
-let c = 5.0;
-34 + 5;
-let go = fun num -> {
+let a = 5.0 + 6.5;
+let adder = fun num {
     num + 5;
 }
-let cheesy = fun item -> {
+let cheesy = fun item {
     item ++ " with cheese";
 }
 `
@@ -94,11 +91,14 @@ func (a Func) Print(indent int) string {
     }
     str += "fun"
     if len(a.Arguments) > 0 {
-        str += " ("
+        str += " (\n"
         for _, el := range(a.Arguments){
-            str += el.Print(indent)
+            str += el.Print(indent + 1)
         }
-        str += ") "
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += ")\n"
     }
     for _, el := range(a.Subvalues){
         str += el.Print(indent+1)
@@ -116,33 +116,38 @@ func toIfaceSlice(v interface{}) []interface{} {
 }
 
 Module = _ expr:Statement _ rest:(Statement)* _ EOF {
+    fmt.Println("beginning module")
     vals := rest.([]interface{})
     if len(vals) > 0 {
+        fmt.Println("multiple statements")
         subvalues := []Ast{expr.(BasicAst)}
         for _, el := range(vals){
-            subvalues = append(subvalues, el.(BasicAst))
+            subvalues = append(subvalues, el.(Ast))
         }
         return BasicAst{Type: "Module", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return BasicAst{Type: "Module", Subvalues: []Ast{expr.(BasicAst)}, ValueType:CONTAINER }, nil
+        return BasicAst{Type: "Module", Subvalues: []Ast{expr.(Ast)}, ValueType:CONTAINER }, nil
     }
 }
 
 Statement = "let" __ i:Identifier _ '=' _ expr:Expr _ {
     fmt.Printf("assignment: %s\n", string(c.text))
-    return BasicAst{Type: "Assignment", Subvalues: []Ast{i.(BasicAst),expr.(BasicAst)}, ValueType:CONTAINER }, nil
+    return BasicAst{Type: "Assignment", Subvalues: []Ast{i.(BasicAst), expr.(Ast)}, ValueType:CONTAINER }, nil
 } / Expr
 
-Expr = FuncDefn / BinExpr
+Expr = ex:(FuncDefn / BinExpr){
+    fmt.Printf("expr: %s\n", string(c.text))
+    return ex, nil
+}
 
-FuncDefn = "fun" __ ids:(Identifier __)* _ "->" _ '{' _ statements:(Statement)+ _ '}' _ {
+FuncDefn = "fun" __ ids:(Identifier __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
     fmt.Println("func", string(c.text))
     subvalues := []Ast{}
     args := []Ast{}
     vals := statements.([]interface{})
     if len(vals) > 0 {
         for _, el := range(vals){
-            subvalues = append(subvalues, el.(BasicAst))
+            subvalues = append(subvalues, el.(Ast))
         }
     }
     vals = ids.([]interface{})
@@ -151,7 +156,7 @@ FuncDefn = "fun" __ ids:(Identifier __)* _ "->" _ '{' _ statements:(Statement)+ 
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[0].(BasicAst)
+            v := restExpr[0].(Ast)
             args = append(args, v)
         }
     }
@@ -167,7 +172,7 @@ BinExpr = _ op:BinOp rest:(BinOp)* _ ';' _ {
         }
         return BasicAst{Type: "Expr", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return BasicAst{Type: "Expr", Subvalues: []Ast{op.(BasicAst)}, ValueType:CONTAINER }, nil
+        return BasicAst{Type: "Expr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
     }
 }
 
@@ -181,13 +186,13 @@ BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(BasicAst)
-            op := restExpr[1].(BasicAst)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
         return BasicAst{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return first.(BasicAst), nil
+        return first.(Ast), nil
     }
 }
 
@@ -199,13 +204,13 @@ BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(BasicAst)
-            op := restExpr[1].(BasicAst)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
         return BasicAst{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return first.(BasicAst), nil
+        return first.(Ast), nil
     }
 
 }
@@ -218,13 +223,13 @@ BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(BasicAst)
-            op := restExpr[1].(BasicAst)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
         return BasicAst{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return first.(BasicAst), nil
+        return first.(Ast), nil
     }
 
 }
@@ -237,13 +242,13 @@ BinOpHigh = _ first:Value rest:(__ OperatorHigh __ Value)* {
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(BasicAst)
-            op := restExpr[1].(BasicAst)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
         return BasicAst{Type: "BinOp", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return first.(BasicAst), nil
+        return first.(Ast), nil
     }
 }
 
