@@ -173,7 +173,8 @@ let tester = func a {
     }
     result;
 }
-cheesy "pineapple" "bbq sauce";
+let result = 5 * (4 + 6) * 2;
+let thing = cheesy "cheese1" "cheese2";
 `
     fmt.Println(input)
     r := strings.NewReader(input)
@@ -204,7 +205,7 @@ Statement = '#' comment:(!EscapedChar .)* &'\n' {
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
 /
-"let" __ i:Value rest:(',' _ Value)* _ '=' _ expr:Expr _ {
+"let" __ i:Identifier rest:(',' _ Identifier)* _ '=' _ expr:Expr _ {
     fmt.Printf("assignment: %s\n", string(c.text))
     vals := []Ast{i.(Ast)}
     if len(rest.([]interface{})) > 0 {
@@ -268,7 +269,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
 }
 
 FuncDefn = "func" __ ids:(Identifier __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
-    fmt.Println("func", string(c.text))
+    fmt.Println(string(c.text))
     subvalues := []Ast{}
     args := []Ast{}
     vals := statements.([]interface{})
@@ -291,6 +292,7 @@ FuncDefn = "func" __ ids:(Identifier __)* _ "->"? _ '{' _ statements:(Statement)
 }
 
 CompoundExpr = _ op:BinOp rest:(BinOp)* _ ';' _ {
+    fmt.Println("compound", op, rest);
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{op.(Ast)}
@@ -303,9 +305,10 @@ CompoundExpr = _ op:BinOp rest:(BinOp)* _ ';' _ {
     }
 }
 
-BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh
+BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh / BinOpParens
 
 BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
+    fmt.Println("binopbool", first, rest);
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -324,6 +327,7 @@ BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
 }
 
 BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
+    fmt.Println("binopeq", first, rest);
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -343,6 +347,7 @@ BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
 }
 
 BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
+    fmt.Println("binoplow", first, rest);
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -361,7 +366,8 @@ BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
 
 }
 
-BinOpHigh = _ first:Value rest:(__ OperatorHigh __ Value)* {
+BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
+    fmt.Println("binophigh", first, rest);
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -378,6 +384,13 @@ BinOpHigh = _ first:Value rest:(__ OperatorHigh __ Value)* {
         return first.(Ast), nil
     }
 }
+
+BinOpParens = '(' _ first:BinOp ')' {
+    fmt.Println("binopparens", first);
+
+    subvalues := []Ast{first.(Ast)}
+    return BasicAst{Type: "BinOpParens", Subvalues: subvalues, ValueType:CONTAINER }, nil
+} / Value
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
 
@@ -409,9 +422,7 @@ OperatorLow = ( "+." / "-." ) {
 Value = Identifier / v:Const {
     return v.(Ast), nil
 }
-/ '(' expr:Expr ')' {
-    return expr.(Ast), nil
-}
+
 
 Identifier = ([a-z]+ [a-zA-Z0-9_]* / '_') {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
