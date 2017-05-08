@@ -21,7 +21,8 @@
 
 ### Function calls
 
-Syntax: ```
+Syntax: 
+```
 let add = func a b {
     a + b;
 }

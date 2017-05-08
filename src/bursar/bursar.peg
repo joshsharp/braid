@@ -174,11 +174,11 @@ Module = _ stat:Statement _ rest:(Statement)* _ EOF {
 }
 
 Statement = '#' comment:(!EscapedChar .)* &'\n' {
-    fmt.Println(comment)
+    fmt.Println("comment:", string(c.text))
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
 /
-"let" __ i:Identifier rest:(',' _ Identifier)* _ '=' _ expr:Expr _ {
+_ "let" __ i:Identifier rest:(',' _ Identifier)* _ '=' _ expr:Expr _ {
     fmt.Println("assignment:", string(c.text))
     vals := []Ast{i.(Ast)}
     if len(rest.([]interface{})) > 0 {

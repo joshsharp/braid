@@ -6,7 +6,7 @@ import (
 )
 
 func main(){
-    input := `
+    ex1 := `
 # test
 let _, b = 5.0 + 6.5;
 let cheesy = func item item2 {
@@ -22,10 +22,19 @@ let tester = func a {
     }
     result;
 }
-# let thing = cheesy "pineapple" "bbq sauce";
 let result = 5 * (4 + 6) * 2;
+# hoo boy this is a good'un
 let five = 1 / 1 + 3 * (55 - 2);
+# let mmm = 1 + 1
 `
+//	ex2 := `
+//# one
+//let a = 2;
+//# two
+//let b = 2 + 2;
+//`
+	
+	input := ex1
 	
     fmt.Println(input)
     r := strings.NewReader(input)
