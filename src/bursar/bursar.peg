@@ -73,7 +73,7 @@ func (a BasicAst) Print(indent int) string {
 }
 
 func (a Func) String() string {
-    return "Fun"
+    return "Func"
 }
 
 func (i If) String() string {
@@ -86,7 +86,7 @@ func (a Func) Print(indent int) string {
     for i := 0; i < indent; i++ {
         str += "  "
     }
-    str += "Fun"
+    str += "Func"
     if len(a.Arguments) > 0 {
         str += " (\n"
         for _, el := range(a.Arguments){
@@ -158,18 +158,18 @@ func toIfaceSlice(v interface{}) []interface{} {
 
 }
 
-Module = _ expr:Statement _ rest:(Statement)* _ EOF {
+Module = _ stat:Statement _ rest:(Statement)* _ EOF {
     fmt.Println("beginning module")
     vals := rest.([]interface{})
     if len(vals) > 0 {
         fmt.Println("multiple statements")
-        subvalues := []Ast{expr.(Ast)}
+        subvalues := []Ast{stat.(Ast)}
         for _, el := range(vals){
             subvalues = append(subvalues, el.(Ast))
         }
         return BasicAst{Type: "Module", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
-        return BasicAst{Type: "Module", Subvalues: []Ast{expr.(Ast)}, ValueType:CONTAINER }, nil
+        return BasicAst{Type: "Module", Subvalues: []Ast{stat.(Ast)}, ValueType:CONTAINER }, nil
     }
 }
 
@@ -178,7 +178,7 @@ Statement = '#' comment:(!EscapedChar .)* &'\n' {
 }
 /
 "let" __ i:Identifier rest:(',' _ Identifier)* _ '=' _ expr:Expr _ {
-    fmt.Printf("assignment: %s\n", string(c.text))
+    fmt.Println("assignment:", string(c.text))
     vals := []Ast{i.(Ast)}
     if len(rest.([]interface{})) > 0 {
         restSl := toIfaceSlice(rest)
@@ -193,7 +193,7 @@ Statement = '#' comment:(!EscapedChar .)* &'\n' {
 } / Expr
 
 Expr = ex:(FuncDefn / IfExpr / CompoundExpr){
-    fmt.Printf("expr: %s\n", string(c.text))
+    fmt.Printf("top-level expr: %s\n", string(c.text))
     return ex, nil
 }
 
@@ -263,14 +263,20 @@ FuncDefn = "func" __ ids:(Identifier __)* _ "->"? _ '{' _ statements:(Statement)
     return Func{Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
 }
 
-CompoundExpr = _ op:BinOp rest:(BinOp)* _ ';' _ {
+CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ ';' _ {
     //fmt.Println("compound", op, rest);
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{op.(Ast)}
-        for _, el := range(vals){
-            subvalues = append(subvalues, el.(Ast))
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[3].(Ast)
+            op := restExpr[1].(Ast)
+            subvalues = append(subvalues, op, v)
         }
+
         return BasicAst{Type: "CompoundExpr", Subvalues: subvalues, ValueType:CONTAINER }, nil
     } else {
         return BasicAst{Type: "CompoundExpr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
@@ -359,9 +365,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
 
 BinOpParens = '(' _ first:BinOp ')' {
     //fmt.Println("binopparens", first);
-
-    subvalues := []Ast{first.(Ast)}
-    return BasicAst{Type: "BinOpParens", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    return BasicAst{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}, ValueType:CONTAINER }, nil
 } / Value
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow

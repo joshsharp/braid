@@ -22,9 +22,11 @@ let tester = func a {
     }
     result;
 }
-let thing = cheesy "pineapple" "bbq sauce";
+# let thing = cheesy "pineapple" "bbq sauce";
 let result = 5 * (4 + 6) * 2;
+let five = 1 / 1 + 3 * (55 - 2);
 `
+	
     fmt.Println(input)
     r := strings.NewReader(input)
     result, err := ParseReader("", r)
