@@ -178,7 +178,7 @@ Statement = '#' comment:(!EscapedChar .)* &'\n' {
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
 /
-_ "let" __ i:Identifier rest:(',' _ Identifier)* _ '=' _ expr:Expr _ {
+_ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
     fmt.Println("assignment:", string(c.text))
     vals := []Ast{i.(Ast)}
     if len(rest.([]interface{})) > 0 {
@@ -241,7 +241,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-FuncDefn = "func" __ ids:(Identifier __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
+FuncDefn = "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
     fmt.Println(string(c.text))
     subvalues := []Ast{}
     args := []Ast{}
@@ -400,8 +400,15 @@ Value = Identifier / v:Const {
     return v.(Ast), nil
 }
 
+Assignable = Identifier / Unused
 
-Identifier = ([a-z]+ [a-zA-Z0-9_]* / '_') {
+Identifier = VariableName / ModuleName
+
+VariableName = ([a-z]+ [a-zA-Z0-9_]*) {
+    return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
+}
+
+ModuleName = ([A-Z]+ [a-zA-Z0-9_]*) {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
@@ -437,6 +444,10 @@ Const = '-'? [0-9]+ !'.' {
 }
 / "'" val:(!EscapedChar .) "'" {
     return BasicAst{Type:"Char", CharValue: rune(c.text[1]), ValueType:CHAR}, nil
+}
+
+Unused = ('_') {
+    return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 EscapedChar = [\x00-\x1f"\\]
