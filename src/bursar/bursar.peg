@@ -30,6 +30,13 @@ type Func struct {
     Subvalues []Ast
 }
 
+type Call struct {
+    Module Ast
+    Function Ast
+    Arguments []Ast
+    ValueType ValueType
+}
+
 type If struct {
     Condition Ast
     Then []Ast
@@ -99,6 +106,34 @@ func (a Func) Print(indent int) string {
     }
     for _, el := range(a.Subvalues){
         str += el.Print(indent+1)
+    }
+    return str
+}
+
+func (a Call) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Call:\n"
+    if a.Module.(BasicAst).Type != "" {
+        str += a.Module.Print(indent + 1)
+    }
+    str += a.Function.Print(indent + 1)
+
+    if len(a.Arguments) > 0 {
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += "(\n"
+        for _, el := range(a.Arguments){
+            str += el.Print(indent + 1)
+        }
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += ")\n"
     }
     return str
 }
@@ -193,7 +228,7 @@ _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
     return Assignment{Left: vals, Right: expr.(Ast)}, nil
 } / Expr
 
-Expr = ex:(FuncDefn / IfExpr / CompoundExpr){
+Expr = ex:(FuncDefn / Call / IfExpr / CompoundExpr){
     fmt.Printf("top-level expr: %s\n", string(c.text))
     return ex, nil
 }
@@ -262,6 +297,41 @@ FuncDefn = "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statemen
         }
     }
     return Func{Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
+}
+
+Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
+    fmt.Println("call", string(c.text))
+
+    args := []Ast{}
+    vals := arguments.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(arguments)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[1].(Ast)
+            args = append(args, v)
+        }
+    }
+
+    return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
+}
+/ fn:VariableName arguments:(__ Value)* ';' _ {
+    fmt.Println("call", string(c.text))
+    var mod BasicAst
+    args := []Ast{}
+    vals := arguments.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(arguments)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[1].(Ast)
+            args = append(args, v)
+        }
+    }
+
+    return Call{Module: mod, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 
 CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ ';' _ {

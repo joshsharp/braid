@@ -6,35 +6,37 @@ import (
 )
 
 func main(){
-    ex1 := `
-# test
-let _, b = 5.0 + 6.5;
-let cheesy = func item item2 {
-    item ++ " and " ++ item2 ++ " with cheese"; # more test
-}
-let tester = func a {
-    let result = if a > 100 {
-        a + 1;
-    } else if a > 50 {
-        a + 20;
-    } else {
-        a + 2;
-    }
-    result;
-}
-let result = 5 * (4 + 6) * 2;
-# hoo boy this is a good'un
-let five = 1 / 1 + 3 * (55 - 2);
-# let mmm = 1 + 1
-`
-//	ex2 := `
-//# one
-//let a = 2;
-//# two
-//let b = 2 + 2;
+//    ex1 := `
+//# test
+//let _, b = 5.0 + 6.5;
+//let cheesy = func item item2 {
+//    item ++ " and " ++ item2 ++ " with cheese"; # more test
+//}
+//let tester = func a {
+//    let result = if a > 100 {
+//        a + 1;
+//    } else if a > 50 {
+//        a + 20;
+//    } else {
+//        a + 2;
+//    }
+//    result;
+//}
+//let result = 5 * (4 + 6) * 2;
+//let _ = cheesy "pineapple" "bbq sauce";
+//# hoo boy this is a good'un
+//let five = 1 / 1 + 3 * (55 - 2);
+//# let mmm = 1 + 1
 //`
+	ex2 := `
+# one
+let a = 2;
+# two
+let b = 2 + 2;
+let c = List.add 1 2 3;
+`
 	
-	input := ex1
+	input := ex2
 	
     fmt.Println(input)
     r := strings.NewReader(input)
