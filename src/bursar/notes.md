@@ -16,7 +16,6 @@
 - Importing other Bursar modules
 - Importing Go packages? But we can run it through goimports
 - Ability to define a main func? We could implement that anyway though
-- Function calls!
 - Calls to Go functions
 
 ### Function calls
@@ -28,9 +27,12 @@ let add = func a b {
 }
 
 add 5 6;
+Mod.add 5 6;
 ```
 
 ### Calls to Go functions
+
+Perhaps for MVP all calls should just map to Go funcs? That'd be easiest
 
 ## What can we do with that?
 

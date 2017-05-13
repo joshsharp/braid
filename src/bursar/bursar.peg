@@ -470,7 +470,7 @@ Value = Identifier / v:Const {
     return v.(Ast), nil
 }
 
-Assignable = Identifier / Unused
+Assignable = VariableName / Unused
 
 Identifier = VariableName / ModuleName
 
