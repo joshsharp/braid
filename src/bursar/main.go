@@ -35,12 +35,12 @@ let a = 2;
 let b = 2 + 2;
 let _ = List.add 1 2 3;
 `,
-`
+`let a = 3;
 let 😐 = 45;
-let a = 3;
+# thing
 `};
 	
-	input := examples[1]
+	input := examples[2]
 	
     fmt.Println(input)
     r := strings.NewReader(input)
@@ -50,7 +50,9 @@ let a = 3;
 		fmt.Println("ERROR:")
 		list := err.(errList)
 		for _, err := range list {
-			fmt.Println(err)
+			
+			pe := err.(*parserError)
+			fmt.Println(pe)
 		}
 	} else {
 		ast := result.(Ast)

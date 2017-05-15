@@ -34,6 +34,17 @@ Mod.add 5 6;
 
 Perhaps for MVP all calls should just map to Go funcs? That'd be easiest
 
+### Incorrect position for parser errors
+
+The line in `parser.parse` for adding an error needs to look like this:
+
+```go
+// make sure this doesn't go out silently
+p.addErrAt(errNoMatch, p.cur.pos)
+```
+
+Maybe do a pull request to pigeon to get this fixed?
+
 ## What can we do with that?
 
 ## What next?

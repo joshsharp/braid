@@ -2757,6 +2757,7 @@ func (p *parser) addErr(err error) {
 }
 
 func (p *parser) addErrAt(err error, pos position) {
+	fmt.Println("adding an error at", pos)
 	var buf bytes.Buffer
 	if p.filename != "" {
 		buf.WriteString(p.filename)
@@ -2797,6 +2798,8 @@ func (p *parser) read() {
 			p.addErr(errInvalidEncoding)
 		}
 	}
+	
+	//fmt.Println("pos updated:", p.pt)
 }
 
 // restore parser position to the savepoint pt.
@@ -2881,7 +2884,8 @@ func (p *parser) parse(g *grammar) (val interface{}, err error) {
 	if !ok {
 		if len(*p.errs) == 0 {
 			// make sure this doesn't go out silently
-			p.addErr(errNoMatch)
+			//fmt.Println("the first rule failed", p.cur.pos)
+			p.addErrAt(errNoMatch, p.cur.pos)
 		}
 		return nil, p.errs.err()
 	}
