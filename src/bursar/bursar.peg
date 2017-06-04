@@ -194,10 +194,10 @@ func toIfaceSlice(v interface{}) []interface{} {
 }
 
 Module = _ stat:Statement _ rest:(Statement)* _ EOF {
-    fmt.Println("beginning module")
+    //fmt.Println("beginning module")
     vals := rest.([]interface{})
     if len(vals) > 0 {
-        fmt.Println("multiple statements")
+        //fmt.Println("multiple statements")
         subvalues := []Ast{stat.(Ast)}
         for _, el := range(vals){
             subvalues = append(subvalues, el.(Ast))
@@ -209,12 +209,12 @@ Module = _ stat:Statement _ rest:(Statement)* _ EOF {
 }
 
 Statement = '#' comment:(!EscapedChar .)* &'\n' {
-    fmt.Println("comment:", string(c.text))
+    //fmt.Println("comment:", string(c.text))
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
 /
 _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
-    fmt.Println("assignment:", string(c.text))
+    //fmt.Println("assignment:", string(c.text))
     vals := []Ast{i.(Ast)}
     if len(rest.([]interface{})) > 0 {
         restSl := toIfaceSlice(rest)
@@ -229,12 +229,12 @@ _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
 } / Expr
 
 Expr = ex:(FuncDefn / Call / IfExpr / CompoundExpr){
-    fmt.Printf("top-level expr: %s\n", string(c.text))
+    //fmt.Printf("top-level expr: %s\n", string(c.text))
     return ex, nil
 }
 
 IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ elseifs:IfExpr {
-    fmt.Printf("if: %s\n", string(c.text))
+    //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
     if len(vals) > 0 {
@@ -246,7 +246,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
 }
 /
 "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ '{' _ elses:(Statement)+ _ '}' _ {
-    fmt.Printf("if: %s\n", string(c.text))
+    //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
     if len(vals) > 0 {
@@ -265,7 +265,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
 }
 /
 "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ '}' _ {
-    fmt.Printf("if: %s\n", string(c.text))
+    //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
     if len(vals) > 0 {
@@ -277,7 +277,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
 }
 
 FuncDefn = "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
-    fmt.Println(string(c.text))
+    //fmt.Println(string(c.text))
     subvalues := []Ast{}
     args := []Ast{}
     vals := statements.([]interface{})
@@ -300,7 +300,7 @@ FuncDefn = "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statemen
 }
 
 Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
-    fmt.Println("call", string(c.text))
+    //fmt.Println("call", string(c.text))
 
     args := []Ast{}
     vals := arguments.([]interface{})
@@ -316,9 +316,10 @@ Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
 
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
-/ fn:VariableName arguments:(__ Value)* ';' _ {
-    fmt.Println("call", string(c.text))
-    var mod BasicAst
+/
+fn:VariableName arguments:(__ Value)* ';' _ {
+    //fmt.Println("call", string(c.text))
+    //var mod BasicAst
     args := []Ast{}
     vals := arguments.([]interface{})
     if len(vals) > 0 {
@@ -331,7 +332,7 @@ Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
         }
     }
 
-    return Call{Module: mod, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
+    return Call{Module: nil, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 
 CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ ';' _ {
