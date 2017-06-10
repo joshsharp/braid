@@ -2,10 +2,24 @@
 	"version": 0,
 	"dependencies": [
 		{
-			"importpath": "github.com/PuerkitoBio/pigeon",
-			"repository": "https://github.com/PuerkitoBio/pigeon",
-			"revision": "00949f7e8bae024d00576190ea052378944083d9",
+			"importpath": "github.com/mna/pigeon",
+			"repository": "https://github.com/mna/pigeon",
+			"revision": "4468ff667da4e27301e257e6920165ddeb00c491",
 			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/tools/go/ast/astutil",
+			"repository": "https://go.googlesource.com/tools",
+			"revision": "e011c1062a41d0e2614279f1dc8cf7f1bf6aaac3",
+			"branch": "master",
+			"path": "/go/ast/astutil"
+		},
+		{
+			"importpath": "golang.org/x/tools/imports",
+			"repository": "https://go.googlesource.com/tools",
+			"revision": "e011c1062a41d0e2614279f1dc8cf7f1bf6aaac3",
+			"branch": "master",
+			"path": "/imports"
 		}
 	]
 }

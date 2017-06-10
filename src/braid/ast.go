@@ -29,6 +29,7 @@ type BasicAst struct {
 }
 
 type Func struct {
+    Name string
     Arguments []Ast
     ValueType ValueType
     Subvalues []Ast
@@ -115,7 +116,8 @@ func (a Func) Print(indent int) string {
     for i := 0; i < indent; i++ {
         str += "  "
     }
-    str += "Func"
+    str += "Func "
+    str += a.Name
     if len(a.Arguments) > 0 {
         str += " (\n"
         for _, el := range(a.Arguments){

@@ -49,29 +49,57 @@ func (a BasicAst) Compile(state State) string {
 func (a Assignment) Compile(state State) string {
 	result := ""
 
-	switch a.Right.(type) {
-	case Func:
-		result += "func " + a.Left[0].Compile(state)
-		result += a.Right.Compile(state)
-		return result
-	
-	default:
-		left := make([]string,0)
-		for _, el := range(a.Left){
-			left = append(left, el.Compile(state))
-		}
-		
-		result += strings.Join(left, ", ")
-		result += " := "
-		result += a.Right.Compile(state)
-		return result + "\n"
+	left := make([]string,0)
+	for _, el := range(a.Left){
+		left = append(left, el.Compile(state))
 	}
 	
-	return result
+	result += strings.Join(left, ", ")
+	result += " := "
+	result += a.Right.Compile(state)
+	return result + "\n"
+	
 }
 
 func (a If) Compile(state State) string {
-	return "if { }"
+	result := "if"
+	
+	result += "(" + a.Condition.Compile(state) + ") {\n"
+	then := ""
+	
+	for _, el := range(a.Then){
+		// compile each sub AST
+		// make a result then indent each line
+		then += el.Compile(state)
+	}
+	
+	for _, el := range(strings.Split(then, "\n")){
+		result += "\t" + el + "\n"
+	}
+	
+	result += "}"
+	if a.Else == nil {
+		return result + "\n\n"
+	}
+	
+	result += " else {\n"
+	elser := ""
+	
+	for _, el := range(a.Else){
+		// compile each sub AST
+		// make a result then indent each line
+		elser += el.Compile(state)
+	}
+	
+	for _, el := range(strings.Split(elser, "\n")){
+		result += "\t" + el + "\n"
+	}
+	
+	result += "}\n"
+	
+	return result
+	
+	
 }
 
 func (a Call) Compile(state State) string {
@@ -93,7 +121,7 @@ func (a Call) Compile(state State) string {
 }
 
 func (a Func) Compile(state State) string {
-	result := "("
+	result := "func " + a.Name + " ("
 	if len(a.Arguments) > 0 {
 		args := make([]string,0)
 		for _, el := range(a.Arguments){
@@ -103,11 +131,19 @@ func (a Func) Compile(state State) string {
 	}
 	result += ") {\n"
 	
+	inner := ""
+	
 	for _, el := range(a.Subvalues){
-		result += el.Compile(state)
+		// compile each sub AST
+		// make a result then indent each line
+		inner += el.Compile(state)
 	}
 	
-	result += "\n}\n\n"
+	for _, el := range(strings.Split(inner, "\n")){
+		result += "\t" + el + "\n"
+	}
+	
+	result += "}\n\n"
 	
 	return result
 }

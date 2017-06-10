@@ -193,7 +193,7 @@ func toIfaceSlice(v interface{}) []interface{} {
 
 }
 
-Module = _ stat:Statement _ rest:(Statement)* _ EOF {
+Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
     //fmt.Println("beginning module")
     vals := rest.([]interface{})
     if len(vals) > 0 {
@@ -208,12 +208,16 @@ Module = _ stat:Statement _ rest:(Statement)* _ EOF {
     }
 }
 
-Statement = '#' comment:(!EscapedChar .)* &'\n' {
+TopLevelStatement = Comment / FuncDefn
+
+Statement = Comment / FuncDefn / Assignment / Expr
+
+Comment = '#' comment:(!EscapedChar .)* &'\n' {
     //fmt.Println("comment:", string(c.text))
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
-/
-_ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
+
+Assignment = _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
     //fmt.Println("assignment:", string(c.text))
     vals := []Ast{i.(Ast)}
     if len(rest.([]interface{})) > 0 {
@@ -226,9 +230,40 @@ _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
         }
     }
     return Assignment{Left: vals, Right: expr.(Ast)}, nil
-} / Expr
+}
+/
+_ "let" __ !Assignable {
+    return nil, errors.New("Variable name or '_' (unused result character) required here")
+}
+/
+_ "let" __ i:Assignable rest:(',' _ Assignable)* _ !'=' {
+    return nil, errors.New("When assigning a value to a variable, you must use '='")
+}
 
-Expr = ex:(FuncDefn / Call / IfExpr / CompoundExpr){
+FuncDefn = _ "let" __ i:Assignable _ '=' _ "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
+    //fmt.Println(string(c.text))
+    subvalues := []Ast{}
+    args := []Ast{}
+    vals := statements.([]interface{})
+    if len(vals) > 0 {
+        for _, el := range(vals){
+            subvalues = append(subvalues, el.(Ast))
+        }
+    }
+    vals = ids.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(ids)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[0].(Ast)
+            args = append(args, v)
+        }
+    }
+    return Func{Name: i.(BasicAst).StringValue, Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
+}
+
+Expr = ex:(Call / IfExpr / CompoundExpr){
     //fmt.Printf("top-level expr: %s\n", string(c.text))
     return ex, nil
 }
@@ -276,28 +311,6 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-FuncDefn = "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
-    //fmt.Println(string(c.text))
-    subvalues := []Ast{}
-    args := []Ast{}
-    vals := statements.([]interface{})
-    if len(vals) > 0 {
-        for _, el := range(vals){
-            subvalues = append(subvalues, el.(Ast))
-        }
-    }
-    vals = ids.([]interface{})
-    if len(vals) > 0 {
-        restSl := toIfaceSlice(ids)
-        for _, v := range restSl {
-            // we can get each item in the grammar by index
-            restExpr := toIfaceSlice(v)
-            v := restExpr[0].(Ast)
-            args = append(args, v)
-        }
-    }
-    return Func{Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
-}
 
 Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
     //fmt.Println("call", string(c.text))
@@ -497,8 +510,8 @@ Const = '-'? [0-9]+ !'.' {
     }
     return  BasicAst{Type:"Float", FloatValue:val, ValueType:FLOAT}, nil
 }
-/ "True" / "False" {
-    if string(c.text) == "True" {
+/ "true" / "false" {
+    if string(c.text) == "true" {
         return BasicAst{Type:"Bool", BoolValue: true, ValueType:BOOL}, nil
     }
     return BasicAst{Type:"Bool", BoolValue: false, ValueType:BOOL}, nil
@@ -520,6 +533,8 @@ Const = '-'? [0-9]+ !'.' {
 Unused = ('_') {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
+
+Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" ) ![a-z]+
 
 EscapedChar = [\x00-\x1f"\\]
 
