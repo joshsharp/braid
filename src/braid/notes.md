@@ -42,6 +42,19 @@ add 5 6;
 Mod.add 5 6;
 ```
 
+### Type declarations
+
+```
+type result 'a 'b = 
+| OK 'a
+| Error 'b;
+
+type myPayload = {data: string};
+type person = {age: int, name: string};
+
+type myPayloadResults 'error = list (result myPayload 'error);
+```
+
 ### Calls to Go functions
 
 Perhaps for MVP all calls should just map to Go funcs? That'd be easiest.
@@ -51,12 +64,19 @@ Also need to work out exporting/header files/signatures and how this will map to
 
 [X] Rename back to Braid
 [X] Make new function definition rule that includes the let statement
+[X] Array type literals
+[ ] Calls need to be compiled properly (add semicolons back in?)
+[ ] BinOpParens needs to be compiled with parentheses 
 [ ] 'Type' rule
     - [ ] Record types
     - [ ] Variant types
+[ ] Record type literals
+[ ] Variant type literals
 [ ] Compile `let = if` rule specially
+[ ] Ifs as expressions might need to be compiled to anonymous functions like so:
+    `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`
 [ ] `let a = b` compiles to `b()`, use state to look up if `b` is function and if not, no parentheses 
-[ ] Work out module signatures - maybe like https://realworldocaml.org/v1/en/html/files-modules-and-programs.html#nested-modules
+[ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
 [ ] Work out typeclasses - Elm example https://medium.com/@eeue56/why-type-classes-arent-important-in-elm-yet-dd55be125c81
 [ ] 'Module' rule
 

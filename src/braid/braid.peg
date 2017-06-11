@@ -240,7 +240,7 @@ _ "let" __ i:Assignable rest:(',' _ Assignable)* _ !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
-FuncDefn = _ "let" __ i:Assignable _ '=' _ "func" __ ids:(VariableName __)* _ "->"? _ '{' _ statements:(Statement)+ _ '}' _ {
+FuncDefn = _ "let" __ i:Assignable _ '=' _ "func" __ ids:(VariableName __)* _ '{' __ statements:(Statement)+ _ '}' _ {
     //fmt.Println(string(c.text))
     subvalues := []Ast{}
     args := []Ast{}
@@ -263,7 +263,7 @@ FuncDefn = _ "let" __ i:Assignable _ '=' _ "func" __ ids:(VariableName __)* _ "-
     return Func{Name: i.(BasicAst).StringValue, Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
 }
 
-Expr = ex:(Call / IfExpr / CompoundExpr){
+Expr = ex:(IfExpr / CompoundExpr / Call){
     //fmt.Printf("top-level expr: %s\n", string(c.text))
     return ex, nil
 }
@@ -312,7 +312,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
 }
 
 
-Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
+Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* _ {
     //fmt.Println("call", string(c.text))
 
     args := []Ast{}
@@ -330,7 +330,7 @@ Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* ';' _ {
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 /
-fn:VariableName arguments:(__ Value)* ';' _ {
+fn:VariableName arguments:(__ Value)* _ {
     //fmt.Println("call", string(c.text))
     //var mod BasicAst
     args := []Ast{}
@@ -348,8 +348,8 @@ fn:VariableName arguments:(__ Value)* ';' _ {
     return Call{Module: nil, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 
-CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ ';' _ {
-    //fmt.Println("compound", op, rest);
+CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ {
+    //fmt.Println("compound", op, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{op.(Ast)}
@@ -371,7 +371,7 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ ';' _ {
 BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh / BinOpParens
 
 BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
-    //fmt.Println("binopbool", first, rest);
+    //fmt.Println("binopbool", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -390,7 +390,7 @@ BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
 }
 
 BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
-    //fmt.Println("binopeq", first, rest);
+    //fmt.Println("binopeq", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -410,7 +410,7 @@ BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
 }
 
 BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
-    //fmt.Println("binoplow", first, rest);
+    //fmt.Println("binoplow", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -430,7 +430,7 @@ BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
 }
 
 BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
-    //fmt.Println("binophigh", first, rest);
+    //fmt.Println("binophigh", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
         subvalues := []Ast{first.(Ast)}
@@ -448,8 +448,8 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
     }
 }
 
-BinOpParens = '(' _ first:BinOp ')' {
-    //fmt.Println("binopparens", first);
+BinOpParens = '(' _ first:BinOp _ ')' {
+    //fmt.Println("binopparens", first)
     return BasicAst{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}, ValueType:CONTAINER }, nil
 } / Value
 
@@ -480,15 +480,29 @@ OperatorLow = ( "+." / "-." ) {
     return BasicAst{Type:"IntOperator", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-Value = Identifier / v:Const {
-    return v.(Ast), nil
-}
+Value = VariableName / Const
 
 Assignable = VariableName / Unused
 
 Identifier = VariableName / ModuleName
 
-VariableName = ([a-z]+ [a-zA-Z0-9_]*) {
+ArrayLiteral = '[' _ first:Expr _ rest:(',' _ Expr _)* ','? _ ']' {
+    // rest:(_ ',' _ Expr)*
+    vals := rest.([]interface{})
+    subvalues := []Ast{first.(Ast)}
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(Ast)
+            subvalues = append(subvalues, v)
+        }
+    }
+    return BasicAst{Type: "Array", Subvalues: subvalues, ValueType:CONTAINER }, nil
+}
+
+VariableName = !Reserved ([a-z]+ [a-zA-Z0-9_]*) {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
@@ -528,7 +542,7 @@ Const = '-'? [0-9]+ !'.' {
 }
 / "'" val:(!EscapedChar .) "'" {
     return BasicAst{Type:"Char", CharValue: rune(c.text[1]), ValueType:CHAR}, nil
-}
+} / ArrayLiteral
 
 Unused = ('_') {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil

@@ -34,12 +34,23 @@ func (a BasicAst) Compile(state State) string {
 		}
 		return "false"
 	case CONTAINER:
-		//fmt.Println("container")
-		values := ""
-		for _, el := range (a.Subvalues) {
-			values += el.Compile(state)
+		switch (a.Type){
+		case "Array":
+			values := "["
+			for _, el := range (a.Subvalues) {
+				values += el.Compile(state) + ","
+			}
+			return values + "]"
+		default:
+			values := ""
+			for _, el := range (a.Subvalues) {
+				values += el.Compile(state)
+			}
+			return values
 		}
-		return values
+		
+		//fmt.Println("container")
+		
 	default:
 		return ""
 	}
@@ -62,7 +73,7 @@ func (a Assignment) Compile(state State) string {
 }
 
 func (a If) Compile(state State) string {
-	result := "if"
+	result := "\nif "
 	
 	result += "(" + a.Condition.Compile(state) + ") {\n"
 	then := ""
