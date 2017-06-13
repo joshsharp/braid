@@ -316,7 +316,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
 }
 
 
-Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* _ {
+Call = module:ModuleName '.' fn:VariableName arguments:(__ BinOpParens)* _ {
     //fmt.Println("call", string(c.text))
 
     args := []Ast{}
@@ -334,7 +334,7 @@ Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* _ {
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 /
-_ fn:VariableName arguments:(__ Value)+ _ {
+_ fn:VariableName arguments:(__ BinOpParens)+ _ {
     //fmt.Println("call", string(c.text))
     //var mod BasicAst
     args := []Ast{}
@@ -352,8 +352,7 @@ _ fn:VariableName arguments:(__ Value)+ _ {
     return Call{Module: nil, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 
-CompoundExpr =
-_ op:BinOp rest:(__ Operator __ BinOp)* {
+CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
     //fmt.Println("compound", op, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {

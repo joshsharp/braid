@@ -31,7 +31,7 @@ let main = func {
 		4 + 9
 	}
 	let result = 5 * (4 + 6) * 2
-	let yumPizza = cheesy "pineapple" "bbq sauce"
+	let yumPizza = cheesy "pineapple" ("bbq" ++ "sauce")
 	# hoo boy this is a good'un
 	let five = 1 / 1 + 3 * (55 - 2)
 	# let mmm = 1 + 1
