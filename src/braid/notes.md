@@ -65,20 +65,24 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Rename back to Braid
 [X] Make new function definition rule that includes the let statement
 [X] Array type literals
-[ ] Calls need to be compiled properly (add semicolons back in?)
+[X] Calls need to be compiled properly (add semicolons back in?)
 [ ] BinOpParens needs to be compiled with parentheses 
 [ ] 'Type' rule
     - [ ] Record types
     - [ ] Variant types
 [ ] Record type literals
 [ ] Variant type literals
-[ ] Compile `let = if` rule specially
+[ ] Compile `let = if` rule specially - this means if expr branches need to be unified
+    Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
 [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
     `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`
 [ ] `let a = b` compiles to `b()`, use state to look up if `b` is function and if not, no parentheses 
 [ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
 [ ] Work out typeclasses - Elm example https://medium.com/@eeue56/why-type-classes-arent-important-in-elm-yet-dd55be125c81
 [ ] 'Module' rule
+[ ] Exposed functions need to be uppercased
+[ ] Calls to external functions need to be uppercased
+[ ] Look at standard typeclasses in Haskell, see which we could use
 
 Compiling currently maps straight to outputting code text, needs more passes:
 - [ ] Hindley-Milner type inference, so we can predict errors and map function 
@@ -86,4 +90,5 @@ Compiling currently maps straight to outputting code text, needs more passes:
 - [ ] Linking (Do functions mentioned exist? Do modules?)
 - [ ] Listing and generating of required concretely-typed generic functions
 - Then generating source  
-
+ 
+[ ] Automated building, maybe fork something like gb

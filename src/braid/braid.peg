@@ -210,7 +210,11 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
 
 TopLevelStatement = Comment / FuncDefn
 
-Statement = Comment / FuncDefn / Assignment / Expr
+Statement = Comment / FuncDefn / Assignment / ExprLine
+
+ExprLine = e:Expr &'\n' {
+    return e, nil
+}
 
 Comment = '#' comment:(!EscapedChar .)* &'\n' {
     //fmt.Println("comment:", string(c.text))
@@ -263,7 +267,7 @@ FuncDefn = _ "let" __ i:Assignable _ '=' _ "func" __ ids:(VariableName __)* _ '{
     return Func{Name: i.(BasicAst).StringValue, Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
 }
 
-Expr = ex:(IfExpr / CompoundExpr / Call){
+Expr = ex:(IfExpr / Call / CompoundExpr) {
     //fmt.Printf("top-level expr: %s\n", string(c.text))
     return ex, nil
 }
@@ -280,7 +284,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues, Else: []Ast{elseifs.(Ast)} }, nil
 }
 /
-"if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ '{' _ elses:(Statement)+ _ '}' _ {
+"if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ elses:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -299,7 +303,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues, Else: elsevalues }, nil
 }
 /
-"if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ '}' _ {
+"if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -330,7 +334,7 @@ Call = module:ModuleName '.' fn:VariableName arguments:(__ Value)* _ {
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 /
-fn:VariableName arguments:(__ Value)* _ {
+_ fn:VariableName arguments:(__ Value)+ _ {
     //fmt.Println("call", string(c.text))
     //var mod BasicAst
     args := []Ast{}
@@ -348,7 +352,8 @@ fn:VariableName arguments:(__ Value)* _ {
     return Call{Module: nil, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
 }
 
-CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ {
+CompoundExpr =
+_ op:BinOp rest:(__ Operator __ BinOp)* {
     //fmt.Println("compound", op, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
@@ -367,6 +372,9 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* _ {
         return BasicAst{Type: "CompoundExpr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
     }
 }
+
+
+
 
 BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh / BinOpParens
 

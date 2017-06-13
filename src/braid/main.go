@@ -19,8 +19,12 @@ let tester = func a {
 	let nothing = a + 1
 	if a > 100 {
 		a + 1
+	} else if a > 5 {
+		a + 50
+	} else {
+		a + 100
 	}
-	let result = a
+	
 }
 let main = func {
 	let something = func {
@@ -41,11 +45,11 @@ let main = func {
 	let a = 2
 	# two
 	let b = 3 + -2
-	let _ = List.add 1 2 3
+	let _ = List.add 1 2 [3]
 	let _ = adder 4 5
 }
 `,
-		`
+`
 let main = func {
 	# thing
 	let a = 3
@@ -56,9 +60,14 @@ let main = func {
 }
 `}
 
-	input := examples[1]
+	input := examples[0]
 
-	fmt.Println(input)
+	lines := strings.Split(input, "\n")
+	for i, el := range(lines){
+		fmt.Printf("%02d|%s\n", i + 1, el)
+	}
+	
+	//fmt.Println(input)
 	r := strings.NewReader(input)
 	result, err := ParseReader("", r) //FailureTracking(true)
 
