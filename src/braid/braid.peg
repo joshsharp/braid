@@ -223,18 +223,18 @@ Comment = '#' comment:(!EscapedChar .)* &'\n' {
 
 TypeDefn = _ "type" __ name:VariableName params:(__ '\'' VariableName)* _ '=' types:(__ BaseType / TypeParameter)+ __ {
     // alias type
-    return AliasType{}, nil
+    return AliasType{Name: name.(Ast)}, nil
 }
 /
 _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _
     '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
     // record type
-    return RecordType{}, nil
+    return RecordType{Name: name.(Ast)}, nil
 }
 /
 _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _ rest:(VariantConstructor)+ __ {
     // variant type
-    return VariantType{}, nil
+    return VariantType{Name: name.(Ast)}, nil
 }
 
 VariantConstructor = '|' _ name:ModuleName rest:(__ BaseType / TypeParameter)* {
