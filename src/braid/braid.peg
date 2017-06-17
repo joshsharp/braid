@@ -221,29 +221,44 @@ Comment = '#' comment:(!EscapedChar .)* &'\n' {
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
 
-TypeDefn = _ "type" __ name:VariableName params:(__ '\'' VariableName)* _ '=' types:(__ BaseType / TypeParameter)+ __ {
+TypeDefn = _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
     // alias type
-    return AliasType{Name: name.(Ast)}, nil
+    return AliasType{Name: name.(BasicAst).StringValue, }, nil
 }
 /
 _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _
     '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
     // record type
-    return RecordType{Name: name.(Ast)}, nil
+    fields := []Ast{first.(Ast)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(Ast)
+            fields = append(fields, v)
+        }
+    }
+
+    return RecordType{Name: name.(BasicAst).StringValue, Fields: fields}, nil
 }
 /
-_ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _ rest:(VariantConstructor)+ __ {
+_ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _ rest:(VariantConstructor)+ {
     // variant type
-    return VariantType{Name: name.(Ast)}, nil
+    return VariantType{Name: name.(BasicAst).StringValue}, nil
 }
 
-VariantConstructor = '|' _ name:ModuleName rest:(__ BaseType / TypeParameter)* {
-    return VariantConstructor{}, nil
+VariantConstructor = '|' _ name:ModuleName rest:(__ AnyType)* _ {
+    return VariantConstructor{Name: name.(BasicAst).StringValue}, nil
 }
 
-RecordFieldDefn = name:VariableName _ ':' _ t:(BaseType / TypeParameter) {
-    return RecordField{}, nil
+RecordFieldDefn = name:VariableName _ ':' _ t:(AnyType) {
+    return RecordField{Name: name.(BasicAst).StringValue, Type: t.(Ast)}, nil
 }
+
+AnyType = BaseType / TypeParameter
 
 Assignment = _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
     //fmt.Println("assignment:", string(c.text))

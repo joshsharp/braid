@@ -79,6 +79,7 @@ Also need to work out exporting/header files/signatures and how this will map to
     Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
 [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
     `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`
+[ ] `match` rule
 [ ] `let a = b` compiles to `b()`, use state to look up if `b` is function and if not, no parentheses 
 [ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
 [ ] Work out typeclasses - Elm example https://medium.com/@eeue56/why-type-classes-arent-important-in-elm-yet-dd55be125c81

@@ -76,7 +76,8 @@ type RecordField struct {
 }
 
 type VariantConstructor struct {
-
+    Name string
+    Fields []Ast
 }
 
 type Ast interface {
@@ -152,8 +153,9 @@ func (a Func) Print(indent int) string {
         for i := 0; i < indent; i++ {
             str += "  "
         }
-        str += ")\n"
+        str += ")"
     }
+    str += "\n"
     for _, el := range(a.Subvalues){
         str += el.Print(indent+1)
     }
@@ -231,6 +233,60 @@ func (a Assignment) Print(indent int) string {
     }
     str += a.Right.Print(indent+1)
 
+    return str
+}
+
+func (t RecordType) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Type Record:\n"
+    
+    return str
+}
+
+func (t VariantType) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Type Variant:\n"
+    
+    return str
+}
+
+func (t AliasType) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Type Alias:\n"
+    
+    return str
+}
+func (f RecordField) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Field:\n"
+    
+    return str
+}
+
+func (c VariantConstructor) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Constructor:\n"
+    
     return str
 }
 

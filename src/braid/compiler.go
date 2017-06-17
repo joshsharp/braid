@@ -164,3 +164,34 @@ func (a Func) Compile(state State) string {
 	
 	return result
 }
+
+func (a AliasType) Compile(state State) string{
+	return ""
+}
+
+func (r RecordType) Compile(state State) string{
+	str := "type " + r.Name + " struct {\n"
+	
+	inner := ""
+	
+	for _, el := range(r.Fields){
+		// compile each sub AST
+		// make a result then indent each line
+		inner += el.Compile(state)
+	}
+	
+	for _, el := range(strings.Split(inner, "\n")){
+		str += "\t" + el + "\n"
+	}
+	
+	str += "}\n\n"
+	return str
+}
+
+func (v VariantType) Compile(state State) string {
+	return ""
+}
+
+func (f RecordField) Compile(state State) string {
+	return f.Name + " " + f.Type.Compile(state) + "\n"
+}

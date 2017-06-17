@@ -50,6 +50,12 @@ let main = func {
 }
 `,
 `
+type person = { name: string, age: int }
+
+type result 'a 'b =
+	| OK 'a
+	| Error 'b
+
 let main = func {
 	# thing
 	let a = 3
