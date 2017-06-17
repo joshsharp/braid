@@ -53,6 +53,32 @@ type Assignment struct {
     Right Ast
 }
 
+type RecordType struct {
+    Name string
+    Fields []Ast
+    Constructors []Ast
+}
+
+type VariantType struct {
+    Name string
+    Params []Ast
+    Constructors []Ast
+}
+
+type AliasType struct {
+    Name string
+    Params []Ast
+}
+
+type RecordField struct {
+    Name string
+    Type Ast
+}
+
+type VariantConstructor struct {
+
+}
+
 type Ast interface {
     Print(indent int) string
     Compile(state State) string

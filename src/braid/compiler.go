@@ -41,6 +41,12 @@ func (a BasicAst) Compile(state State) string {
 				values += el.Compile(state) + ","
 			}
 			return values + "]"
+		case "BinOpParens":
+			values := "("
+			for _, el := range (a.Subvalues) {
+				values += el.Compile(state)
+			}
+			return values + ")"
 		default:
 			values := ""
 			for _, el := range (a.Subvalues) {

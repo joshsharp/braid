@@ -47,12 +47,15 @@ Mod.add 5 6;
 ```
 type result 'a 'b = 
 | OK 'a
-| Error 'b;
+| Error 'b
 
-type myPayload = {data: string};
-type person = {age: int, name: string};
+type myPayload = {data: string}
+type person = {age: int, name: string}
+type vaguePerson 'a = {name: string, extra: 'a}
 
-type myPayloadResults 'error = list (result myPayload 'error);
+type people = list person
+type vaguePeople 'a = list vaguePerson 'a
+type stringPeople string = list vaguePerson string
 ```
 
 ### Calls to Go functions
@@ -66,7 +69,7 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Make new function definition rule that includes the let statement
 [X] Array type literals
 [X] Calls need to be compiled properly (add semicolons back in?)
-[ ] BinOpParens needs to be compiled with parentheses 
+[X] BinOpParens needs to be compiled with parentheses 
 [ ] 'Type' rule
     - [ ] Record types
     - [ ] Variant types

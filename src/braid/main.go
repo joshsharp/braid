@@ -57,10 +57,11 @@ let main = func {
 	let c = 5
 	# no
 	let d = [5, 6]
+	let e = b
 }
 `}
 
-	input := examples[0]
+	input := examples[2]
 
 	lines := strings.Split(input, "\n")
 	for i, el := range(lines){

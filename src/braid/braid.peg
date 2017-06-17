@@ -208,7 +208,7 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
     }
 }
 
-TopLevelStatement = Comment / FuncDefn
+TopLevelStatement = Comment / FuncDefn / TypeDefn
 
 Statement = Comment / FuncDefn / Assignment / ExprLine
 
@@ -219,6 +219,30 @@ ExprLine = e:Expr &'\n' {
 Comment = '#' comment:(!EscapedChar .)* &'\n' {
     //fmt.Println("comment:", string(c.text))
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
+}
+
+TypeDefn = _ "type" __ name:VariableName params:(__ '\'' VariableName)* _ '=' types:(__ BaseType / TypeParameter)+ __ {
+    // alias type
+    return AliasType{}, nil
+}
+/
+_ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _
+    '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
+    // record type
+    return RecordType{}, nil
+}
+/
+_ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _ rest:(VariantConstructor)+ __ {
+    // variant type
+    return VariantType{}, nil
+}
+
+VariantConstructor = '|' _ name:ModuleName rest:(__ BaseType / TypeParameter)* {
+    return VariantConstructor{}, nil
+}
+
+RecordFieldDefn = name:VariableName _ ':' _ t:(BaseType / TypeParameter) {
+    return RecordField{}, nil
 }
 
 Assignment = _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
@@ -244,7 +268,7 @@ _ "let" __ i:Assignable rest:(',' _ Assignable)* _ !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
-FuncDefn = _ "let" __ i:Assignable _ '=' _ "func" __ ids:(VariableName __)* _ '{' __ statements:(Statement)+ _ '}' _ {
+FuncDefn = _ "let" __ i:VariableName _ '=' _ "func" __ ids:(VariableName __)* _ '{' __ statements:(Statement)+ _ '}' _ {
     //fmt.Println(string(c.text))
     subvalues := []Ast{}
     args := []Ast{}
@@ -371,9 +395,6 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
         return BasicAst{Type: "CompoundExpr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
     }
 }
-
-
-
 
 BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh / BinOpParens
 
@@ -509,6 +530,10 @@ ArrayLiteral = '[' _ first:Expr _ rest:(',' _ Expr _)* ','? _ ']' {
     return BasicAst{Type: "Array", Subvalues: subvalues, ValueType:CONTAINER }, nil
 }
 
+TypeParameter = '\'' VariableName {
+    return  BasicAst{Type:"TypeParam", StringValue:string(c.text), ValueType:STRING}, nil
+}
+
 VariableName = !Reserved ([a-z]+ [a-zA-Z0-9_]*) {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
@@ -555,7 +580,11 @@ Unused = ('_') {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" ) ![a-z]+
+Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
+
+BaseType = ( "int" / "bool" / "string" / "byte" / "rune" / "float" / "list" ) {
+    return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
+}
 
 EscapedChar = [\x00-\x1f"\\]
 
