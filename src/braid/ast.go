@@ -55,14 +55,14 @@ type Assignment struct {
 
 type RecordType struct {
     Name string
-    Fields []Ast
+    Fields []RecordField
     Constructors []Ast
 }
 
 type VariantType struct {
     Name string
     Params []Ast
-    Constructors []Ast
+    Constructors []VariantConstructor
 }
 
 type AliasType struct {

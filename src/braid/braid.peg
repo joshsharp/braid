@@ -229,7 +229,7 @@ TypeDefn = _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' types:
 _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _
     '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
     // record type
-    fields := []Ast{first.(Ast)}
+    fields := []RecordField{first.(RecordField)}
 
     vals := rest.([]interface{})
     if len(vals) > 0 {
@@ -237,7 +237,7 @@ _ "type" __ name:VariableName params:(__ TypeParameter)* _ '=' _
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[2].(Ast)
+            v := restExpr[2].(RecordField)
             fields = append(fields, v)
         }
     }

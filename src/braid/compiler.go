@@ -189,7 +189,15 @@ func (r RecordType) Compile(state State) string{
 }
 
 func (v VariantType) Compile(state State) string {
-	return ""
+	str := "type " + v.Name + " interface {\n" +
+		"\tsealed()\n" +
+		"}\n\n"
+	
+	for _, el := range(v.Constructors){
+		str += "type " + el.Name + " struct {}\n\n"
+	}
+	
+	return str
 }
 
 func (f RecordField) Compile(state State) string {
