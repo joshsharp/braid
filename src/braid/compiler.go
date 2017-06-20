@@ -190,12 +190,25 @@ func (r RecordType) Compile(state State) string{
 
 func (v VariantType) Compile(state State) string {
 	str := "type " + v.Name + " interface {\n" +
-		"\tsealed()\n" +
+		"\tsumtype()\n" +
 		"}\n\n"
 	
 	for _, el := range(v.Constructors){
-		str += "type " + el.Name + " struct {}\n\n"
+		str += el.Compile(state)
 	}
+	
+	return str
+}
+
+func (c VariantConstructor) Compile(state State) string {
+	str := "type " + c.Name + " struct {\n"
+	for i, el := range(c.Fields){
+		str += fmt.Sprintf("\tF%d", i) + " " + el.Compile(state)
+	}
+	str += "\n}\n\n"
+	
+	// implement sealed
+	str += "func (*" + c.Name + ") sumtype() {}\n\n"
 	
 	return str
 }

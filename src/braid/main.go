@@ -50,11 +50,15 @@ let main = func {
 }
 `,
 `
-type person = { name: string, age: int }
+type Person = { name: string, age: int }
 
-type result 'a 'b =
+type Result 'a 'b =
 	| OK 'a
 	| Error 'b
+
+type Option 'a =
+	| Some 'a
+	| None
 
 let main = func {
 	# thing

@@ -70,9 +70,10 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Array type literals
 [X] Calls need to be compiled properly (add semicolons back in?)
 [X] BinOpParens needs to be compiled with parentheses 
-[ ] 'Type' rule
-    - [ ] Record types
-    - [ ] Variant types
+[X] 'Type' rule
+    - [X] Record types
+    - [X] Variant types
+    - [ ] Alias types
 [ ] Record type literals
 [ ] Variant type literals
 [ ] Compile `let = if` rule specially - this means if expr branches need to be unified
