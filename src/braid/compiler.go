@@ -5,6 +5,14 @@ import (
 	"strings"
 )
 
+func (m Module) Compile(state State) string {
+	values := "package main\n\n"
+	for _, el := range (m.Subvalues) {
+		values += el.Compile(state)
+	}
+	return values
+}
+
 func (a BasicAst) Compile(state State) string {
 	switch (a.ValueType){
 	case STRING:
@@ -166,7 +174,7 @@ func (a Func) Compile(state State) string {
 }
 
 func (a AliasType) Compile(state State) string{
-	return ""
+	return "type " + a.Name + " int32\n\n"
 }
 
 func (r RecordType) Compile(state State) string{

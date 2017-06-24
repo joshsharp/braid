@@ -17,6 +17,11 @@ const (
     NIL
 )
 
+type Module struct {
+    Name string
+    Subvalues []Ast
+}
+
 type BasicAst struct {
     Type string
     StringValue string
@@ -68,6 +73,7 @@ type VariantType struct {
 type AliasType struct {
     Name string
     Params []Ast
+    Types []Ast
 }
 
 type RecordField struct {
@@ -114,6 +120,19 @@ func (a BasicAst) String() string {
             return values
     }
     return "()"
+}
+
+func (m Module) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "Module:\n"
+    for _, el := range(m.Subvalues){
+        str += el.Print(indent+1)
+    }
+    return str
 }
 
 func (a BasicAst) Print(indent int) string {

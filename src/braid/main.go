@@ -52,6 +52,8 @@ let main = func {
 `
 type Person = { name: string, age: int }
 
+type PersonList = list int
+
 type Result 'a 'b =
 	| OK 'a
 	| Error 'b

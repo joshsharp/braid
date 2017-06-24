@@ -202,9 +202,9 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
         for _, el := range(vals){
             subvalues = append(subvalues, el.(Ast))
         }
-        return BasicAst{Type: "Module", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Module{Name:"", Subvalues: subvalues}, nil
     } else {
-        return BasicAst{Type: "Module", Subvalues: []Ast{stat.(Ast)}, ValueType:CONTAINER }, nil
+        return Module{Name:"", Subvalues: []Ast{stat.(Ast)} }, nil
     }
 }
 
@@ -223,7 +223,21 @@ Comment = '#' comment:(!EscapedChar .)* &'\n' {
 
 TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
     // alias type
-    return AliasType{Name: name.(BasicAst).StringValue, }, nil
+    parameters := []Ast{}
+    fields := []Ast{}
+
+    vals := types.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(types)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[1].(Ast)
+            fields = append(fields, v)
+        }
+    }
+
+    return AliasType{Name: name.(BasicAst).StringValue, Params: parameters, Types: fields }, nil
 }
 /
 _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
