@@ -210,7 +210,7 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
 
 TopLevelStatement = Comment / FuncDefn / TypeDefn
 
-Statement = Comment / FuncDefn / Assignment / ExprLine
+Statement = Comment / FuncDefn / Assignment / Call / ExprLine
 
 ExprLine = e:Expr &'\n' {
     return e, nil
@@ -274,7 +274,30 @@ _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _ rest:(VariantCons
     return VariantType{Name: name.(BasicAst).StringValue, Params: parameters, Constructors: constructors}, nil
 }
 
-VariantConstructor = '|' _ name:ModuleName rest:(__ AnyType)* _ {
+RecordFieldDefn = name:VariableName _ ':' _ t:(AnyType) {
+    return RecordField{Name: name.(BasicAst).StringValue, Type: t.(Ast)}, nil
+}
+
+VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
+    // variant constructor with a record type
+    fields := []RecordField{first.(RecordField)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(RecordField)
+            fields = append(fields, v)
+        }
+    }
+
+    record := RecordType{Name: name.(BasicAst).StringValue, Fields: fields}
+    return VariantConstructor{Name: name.(BasicAst).StringValue, Fields: []Ast{record}}, nil
+}
+/
+'|' _ name:ModuleName rest:(__ AnyType)* _ {
     params := []Ast{}
 
     vals := rest.([]interface{})
@@ -291,9 +314,7 @@ VariantConstructor = '|' _ name:ModuleName rest:(__ AnyType)* _ {
     return VariantConstructor{Name: name.(BasicAst).StringValue, Fields: params}, nil
 }
 
-RecordFieldDefn = name:VariableName _ ':' _ t:(AnyType) {
-    return RecordField{Name: name.(BasicAst).StringValue, Type: t.(Ast)}, nil
-}
+
 
 AnyType = BaseType / TypeParameter
 
@@ -340,11 +361,12 @@ FuncDefn = _ "let" __ i:VariableName _ '=' _ "func" __ ids:(VariableName __)* _ 
             args = append(args, v)
         }
     }
-    return Func{Name: i.(BasicAst).StringValue, Arguments: args, Subvalues: subvalues, ValueType:CONTAINER }, nil
+    return Func{Name: i.(BasicAst).StringValue, Arguments: args, Subvalues: subvalues }, nil
 }
 
 Expr = ex:(IfExpr / Call / CompoundExpr) {
     //fmt.Printf("top-level expr: %s\n", string(c.text))
+    //fmt.Println(ex)
     return ex, nil
 }
 
@@ -391,42 +413,54 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-
-Call = module:ModuleName '.' fn:VariableName arguments:(__ BinOpParens)* _ {
+Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
+    arguments := []Ast{}
 
-    args := []Ast{}
-    vals := arguments.([]interface{})
-    if len(vals) > 0 {
-        restSl := toIfaceSlice(arguments)
-        for _, v := range restSl {
-            // we can get each item in the grammar by index
-            restExpr := toIfaceSlice(v)
-            v := restExpr[1].(Ast)
-            args = append(args, v)
-        }
+    if args.(BasicAst).ValueType != NIL {
+        arguments = args.(BasicAst).Subvalues
+
     }
 
-    return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
+    return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: arguments }, nil
 }
 /
-_ fn:VariableName arguments:(__ BinOpParens)+ _ {
+fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
-    //var mod BasicAst
-    args := []Ast{}
-    vals := arguments.([]interface{})
+    arguments := []Ast{}
+
+    if args.(BasicAst).ValueType != NIL {
+        arguments = args.(BasicAst).Subvalues
+
+    }
+
+    return Call{Module: nil, Function: fn.(Ast), Arguments: arguments }, nil
+}
+
+Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
+    args := []Ast{argument.(Ast)}
+
+    vals := rest.([]interface{})
     if len(vals) > 0 {
-        restSl := toIfaceSlice(arguments)
+        restSl := toIfaceSlice(rest)
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[1].(Ast)
+            v := restExpr[2].(Ast)
             args = append(args, v)
         }
     }
 
-    return Call{Module: nil, Function: fn.(Ast), Arguments: args, ValueType:CONTAINER }, nil
+    return BasicAst{Type: "Arguments", Subvalues: args, ValueType:CONTAINER }, nil
 }
+/
+'(' _ argument:Expr _ ')' {
+    args := []Ast{argument.(Ast)}
+    return BasicAst{Type: "Arguments", Subvalues: args, ValueType:CONTAINER }, nil
+}
+/
+Unit
+
 
 CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
     //fmt.Println("compound", op, rest)
@@ -582,6 +616,36 @@ ArrayLiteral = '[' _ first:Expr _ rest:(',' _ Expr _)* ','? _ ']' {
     return BasicAst{Type: "Array", Subvalues: subvalues, ValueType:CONTAINER }, nil
 }
 
+VariantInstance = name:ModuleName _ args:Arguments {
+    arguments := []Ast{}
+
+    if args.(BasicAst).ValueType != NIL {
+        arguments = args.(BasicAst).Subvalues
+
+    }
+    return VariantInstance{Name:name.(BasicAst).StringValue, Arguments: arguments }, nil
+}
+
+RecordInstance = name:ModuleName _ '{' _ firstName:VariableName _ ':' _ firstValue:Expr rest:(',' _ VariableName _ ':' _ Expr )* '}' {
+    instance := RecordInstance{Name: name.(BasicAst).StringValue}
+    instance.Values = make(map[string]Ast)
+
+    vals := rest.([]interface{})
+    instance.Values[firstName.(BasicAst).StringValue] = firstValue.(Ast)
+
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            k := restExpr[2].(BasicAst).StringValue
+            v := restExpr[6].(Ast)
+            instance.Values[k] = v
+        }
+    }
+    return instance, nil
+}
+
 TypeParameter = '\'' VariableName {
     return  BasicAst{Type:"TypeParam", StringValue:string(c.text), ValueType:STRING}, nil
 }
@@ -614,9 +678,7 @@ Const = '-'? [0-9]+ !'.' {
     }
     return BasicAst{Type:"Bool", BoolValue: false, ValueType:BOOL}, nil
 }
-/ "()" {
-    return BasicAst{Type:"Nil", ValueType:NIL}, nil
-}
+/ Unit
 / '"' (!EscapedChar .)* '"' {
     val, err := strconv.Unquote(string(c.text))
     if err == nil {
@@ -626,7 +688,11 @@ Const = '-'? [0-9]+ !'.' {
 }
 / "'" val:(!EscapedChar .) "'" {
     return BasicAst{Type:"Char", CharValue: rune(c.text[1]), ValueType:CHAR}, nil
-} / ArrayLiteral
+} / ArrayLiteral / RecordInstance / VariantInstance
+
+Unit = "()" {
+    return BasicAst{Type:"Nil", ValueType:NIL}, nil
+}
 
 Unused = ('_') {
     return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil

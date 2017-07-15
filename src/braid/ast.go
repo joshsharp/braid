@@ -36,7 +36,6 @@ type BasicAst struct {
 type Func struct {
     Name string
     Arguments []Ast
-    ValueType ValueType
     Subvalues []Ast
 }
 
@@ -44,7 +43,16 @@ type Call struct {
     Module Ast
     Function Ast
     Arguments []Ast
-    ValueType ValueType
+}
+
+type VariantInstance struct {
+    Name string
+    Arguments []Ast
+}
+
+type RecordInstance struct {
+    Name string
+    Values map[string]Ast
 }
 
 type If struct {
@@ -199,6 +207,57 @@ func (a Call) Print(indent int) string {
         }
         str += "(\n"
         for _, el := range(a.Arguments){
+            str += el.Print(indent + 1)
+        }
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += ")\n"
+    }
+    return str
+}
+
+func (a VariantInstance) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "VariantInstance: "
+    str += a.Name + "\n"
+
+    if len(a.Arguments) > 0 {
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += "(\n"
+        for _, el := range(a.Arguments){
+            str += el.Print(indent + 1)
+        }
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += ")\n"
+    }
+    return str
+}
+
+func (a RecordInstance) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += "RecordInstance: "
+    str += a.Name + "\n"
+
+    if len(a.Values) > 0 {
+        for i := 0; i < indent; i++ {
+            str += "  "
+        }
+        str += "(\n"
+        for key, el := range(a.Values){
+            str += key + ":"
             str += el.Print(indent + 1)
         }
         for i := 0; i < indent; i++ {

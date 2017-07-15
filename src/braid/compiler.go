@@ -44,11 +44,11 @@ func (a BasicAst) Compile(state State) string {
 	case CONTAINER:
 		switch (a.Type){
 		case "Array":
-			values := "["
+			values := "[]int{"
 			for _, el := range (a.Subvalues) {
 				values += el.Compile(state) + ","
 			}
-			return values + "]"
+			return values + "}"
 		case "BinOpParens":
 			values := "("
 			for _, el := range (a.Subvalues) {
@@ -140,12 +140,46 @@ func (a Call) Compile(state State) string {
 		}
 		result += strings.Join(args, ", ")
 	}
-	result += ")"
+	result += ")\n"
+	
+	return result
+}
+
+func (a VariantInstance) Compile(state State) string {
+	result := ""
+	result += a.Name + "{"
+	if len(a.Arguments) > 0 {
+		args := make([]string,0)
+		for _, el := range(a.Arguments){
+			args = append(args, el.Compile(state))
+		}
+		result += strings.Join(args, ", ")
+	}
+	result += "}\n"
+	
+	return result
+}
+
+func (a RecordInstance) Compile(state State) string {
+	result := ""
+	result += a.Name + "{"
+	if len(a.Values) > 0 {
+		args := make([]string,0)
+		for key, el := range(a.Values){
+			val := ""
+			val += key + ": "
+			val += el.Compile(state)
+			args = append(args, val)
+		}
+		result += strings.Join(args, ", ")
+	}
+	result += "}\n"
 	
 	return result
 }
 
 func (a Func) Compile(state State) string {
+	// TODO: Only compile once we have concrete implementations
 	result := "func " + a.Name + " ("
 	if len(a.Arguments) > 0 {
 		args := make([]string,0)
@@ -173,11 +207,13 @@ func (a Func) Compile(state State) string {
 	return result
 }
 
-func (a AliasType) Compile(state State) string{
+func (a AliasType) Compile(state State) string {
+	// TODO: Only compile once we have concrete implementations
 	return "type " + a.Name + " int32\n\n"
 }
 
-func (r RecordType) Compile(state State) string{
+func (r RecordType) Compile(state State) string {
+	// TODO: Only compile once we have concrete implementations
 	str := "type " + r.Name + " struct {\n"
 	
 	inner := ""
@@ -197,6 +233,7 @@ func (r RecordType) Compile(state State) string{
 }
 
 func (v VariantType) Compile(state State) string {
+	// TODO: Only compile once we have concrete implementations
 	str := "type " + v.Name + " interface {\n" +
 		"\tsumtype()\n" +
 		"}\n\n"
