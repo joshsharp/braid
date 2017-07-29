@@ -102,6 +102,7 @@ Compiling currently maps straight to outputting code text, needs more passes:
 [ ] Exposed functions need to be uppercased
 [ ] Calls to external functions need to be uppercased
 [ ] Look at standard typeclasses in Haskell, see which we could use
+[ ] Allow comments at the end of lines
 
  
 [ ] Automated building, maybe fork something like gb

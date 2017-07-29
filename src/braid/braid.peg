@@ -216,7 +216,7 @@ ExprLine = e:Expr &'\n' {
     return e, nil
 }
 
-Comment = '#' comment:(!EscapedChar .)* &'\n' {
+Comment = _ '#' comment:(!EscapedChar .)* &'\n' {
     //fmt.Println("comment:", string(c.text))
     return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
 }
@@ -313,8 +313,6 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
 
     return VariantConstructor{Name: name.(BasicAst).StringValue, Fields: params}, nil
 }
-
-
 
 AnyType = BaseType / TypeParameter
 
@@ -413,7 +411,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
+Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -425,7 +423,7 @@ Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: arguments }, nil
 }
 /
-fn:VariableName args:Arguments _ {
+_ fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -460,7 +458,6 @@ Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
 }
 /
 Unit
-
 
 CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
     //fmt.Println("compound", op, rest)
@@ -716,7 +713,7 @@ NonZeroDecimalDigit = [1-9]
 
 HexDigit = [0-9a-f]i
 
-__ "sigwhitespace" = [ \r\n\t]+
+__ "sigwhitespace" = Comment / [ \r\n\t]+
 
 _ "whitespace" = [ \r\n\t]*
 

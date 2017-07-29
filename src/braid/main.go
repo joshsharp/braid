@@ -38,8 +38,15 @@ let main = func {
 }
 `, `
 let adder = func a b {
-	a + b
+    # whoop
+    let b = 4 + 5
+    # hi
+	Mod.f(4, 5)
+    # yes
+	let b = f()
+
 }
+
 let main = func {
 	# one
 	let a = 2
@@ -84,7 +91,7 @@ let test = func p {
 
 `}
 
-	input := examples[2]
+	input := examples[1]
 
 	lines := strings.Split(input, "\n")
 	
@@ -95,7 +102,6 @@ let test = func p {
 
 	if err != nil {
 		
-		
 		fmt.Println("ERROR:")
 		list := err.(errList)
 		for _, err := range list {
@@ -104,8 +110,8 @@ let test = func p {
 
 			
 			//for (i < pe.pos.line){
-			for i, el := range(lines[pe.pos.line-5:pe.pos.line]){
-				offset := pe.pos.line-5
+			for i, el := range(lines[pe.pos.line-1:pe.pos.line]){
+				offset := pe.pos.line-1
 				fmt.Printf("%03d|%s\n", i + 1 + offset, el)
 				//i += 1
 			}
@@ -132,9 +138,9 @@ let test = func p {
 		ast := result.(Ast)
 		fmt.Println("=", ast.Print(0))
 
-		s := make(map[string]interface{})
+        types := infer(ast.(Module))
 
-		fmt.Println(ast.Compile(s))
+		fmt.Println(ast.Compile(types))
 	}
 
 }
