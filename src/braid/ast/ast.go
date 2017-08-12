@@ -1,4 +1,4 @@
-package main
+package ast
 
 import (
 	"fmt"
@@ -30,7 +30,15 @@ type BasicAst struct {
     IntValue int
     FloatValue float64
     ValueType ValueType
-    Subvalues []Ast
+}
+
+type Container struct {
+	Type string
+	Subvalues []Ast
+}
+
+type ArrayType struct {
+	Subvalues []Ast
 }
 
 type Func struct {
@@ -120,14 +128,24 @@ func (a BasicAst) String() string {
             return "false"
         case NIL:
             return "nil"
-        case CONTAINER:
-            values := ""
-            for _, el := range(a.Subvalues){
-                values += fmt.Sprint(el)
-            }
-            return values
     }
     return "()"
+}
+
+func (c Container) String() string {
+	values := ""
+	for _, el := range(c.Subvalues){
+		values += fmt.Sprint(el)
+	}
+	return values
+}
+
+func (a ArrayType) String() string {
+	values := ""
+	for _, el := range(a.Subvalues){
+		values += fmt.Sprint(el)
+	}
+	return values
 }
 
 func (m Module) Print(indent int) string {
@@ -143,6 +161,32 @@ func (m Module) Print(indent int) string {
     return str
 }
 
+func (c Container) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "Container " + c.Type + ":\n"
+	for _, el := range(c.Subvalues){
+		str += el.Print(indent+1)
+	}
+	return str
+}
+
+func (a ArrayType) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "Array: \n"
+	for _, el := range(a.Subvalues){
+		str += el.Print(indent+1)
+	}
+	return str
+}
+
 func (a BasicAst) Print(indent int) string {
     str := ""
 
@@ -150,9 +194,6 @@ func (a BasicAst) Print(indent int) string {
         str += "  "
     }
     str += fmt.Sprintf("%s %s:\n", a.Type, a)
-    for _, el := range(a.Subvalues){
-        str += el.Print(indent+1)
-    }
     return str
 }
 

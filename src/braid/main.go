@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+	"braid/types"
+	"braid/ast"
 )
 
 func main() {
@@ -57,90 +59,98 @@ let main = func {
 	Mod.f()
 }
 `,
-`
-type Person = { name: string, age: int }
+		`
+		type Person = { name: string, age: int }
 
-type IntList = list int
+		type IntList = list int
 
-type Result 'a 'b =
-	| OK 'a
-	| Error 'b
+		type Result 'a 'b =
+			| OK 'a
+			| Error 'b
 
-type Option 'a =
-	| Some 'a
-	| None
+		type Option 'a =
+			| Some 'a
+			| None
 
-let main = func {
-	# thing
-	let a = 3
-	let b = 45
-	let c = 5
-	# no
-	let d = [5, 6]
-	let e = b
-	test((5 + 6), Person{name: "no", age: -1})
-}
+		let main = func {
+			# thing
+			let a = 3
+			let b = 45
+			let c = 5
+			# no
+			let d = [5, 6]
+			let e = b
+			test((5 + 6), Person{name: "no", age: -1})
+		}
 
-let test = func p {
-	let a = Person{name:"Josh", age: 32}
-	let b = OK("yes")
-	let c = Error("failed to do thing")
-	let d = Some("braid")
-	let e = None()
-}
+		let test = func p {
+			let c = 5 + 5
+			# mm
+			let a = Person{name:"Josh", age: 32}
+			let b = OK("yes")
+			let c = Error("failed to do thing")
+			let d = Some("braid")
+			let e = None()
+			# hi
+		}
 
-`}
+		`}
 
-	input := examples[1]
+	input := examples[2]
 
 	lines := strings.Split(input, "\n")
-	
-	
+
 	//fmt.Println(input)
 	r := strings.NewReader(input)
-	result, err := ParseReader("", r) //FailureTracking(true)
+	result, err := ast.ParseReader("", r) //FailureTracking(true)
 
 	if err != nil {
-		
-		fmt.Println("ERROR:")
-		list := err.(errList)
-		for _, err := range list {
-			
-			pe := err.(*parserError)
 
-			
-			//for (i < pe.pos.line){
-			for i, el := range(lines[pe.pos.line-1:pe.pos.line]){
-				offset := pe.pos.line-1
-				fmt.Printf("%03d|%s\n", i + 1 + offset, el)
-				//i += 1
-			}
-			
-			
-			line := lines[pe.pos.line-1]
-			fmt.Printf("    ")
-			for _, el := range(line[:pe.pos.col-1]){
-				if el == '\t'{
-					fmt.Printf("----")
-				} else {
-					fmt.Printf("-")
-				}
-			}
-			fmt.Printf("^\n\n")
-			fmt.Printf("Line %d, character %d: ", pe.pos.line, pe.pos.col)
-			fmt.Println(pe.Inner)
+		fmt.Println("ERROR:")
+		list := err.(ast.ErrorLister).Errors()
+		for _, err := range list {
+
+			pe := err.(ast.ParserError)
+			printError(pe, lines)
 		}
 	} else {
-		for i, el := range(lines){
-			fmt.Printf("%03d|%s\n", i + 1, el)
+		for i, el := range lines {
+			fmt.Printf("%03d|%s\n", i+1, el)
 		}
-		
-		ast := result.(Ast)
-		fmt.Println("=", ast.Print(0))
 
-        types := infer(ast.(Module))
+		a := result.(ast.Ast)
+		fmt.Println("=", a.Print(0))
 
-		fmt.Println(ast.Compile(types))
+		types := types.Infer(a.(ast.Module))
+
+		fmt.Println(a.Compile(types))
 	}
 
+}
+
+func printError(pe ast.ParserError, lines []string) {
+	//for (i < pe.pos.line){
+	start := pe.Pos()[0] - 1
+	if pe.Pos()[0] >= 5 {
+		start = pe.Pos()[0] - 5
+	}
+
+	for i, el := range lines[start:pe.Pos()[0]] {
+		offset := start
+		fmt.Printf("%03d|%s\n", i+1+offset, el)
+		//i += 1
+	}
+
+	line := lines[pe.Pos()[0]-1]
+	fmt.Printf("    ")
+	for _, el := range line[:pe.Pos()[1]-1] {
+		if el == '\t' {
+			fmt.Printf("----")
+		} else {
+			fmt.Printf("-")
+		}
+	}
+	fmt.Printf("^\n\n")
+	fmt.Printf("Line %d, character %d: ", pe.Pos()[0], pe.Pos()[1])
+	fmt.Println(pe.InnerError())
 }

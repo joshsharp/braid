@@ -1,5 +1,5 @@
 {
-package main
+package ast
 
 type ValueType int
 
@@ -415,9 +415,11 @@ Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
-    if args.(BasicAst).ValueType != NIL {
-        arguments = args.(BasicAst).Subvalues
-
+    switch args.(type) {
+    case Container:
+        arguments = args.(Container).Subvalues
+    default:
+        arguments = []Ast{}
     }
 
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: arguments }, nil
@@ -427,9 +429,11 @@ _ fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
-    if args.(BasicAst).ValueType != NIL {
-        arguments = args.(BasicAst).Subvalues
-
+    switch args.(type) {
+    case Container:
+        arguments = args.(Container).Subvalues
+    default:
+        arguments = []Ast{}
     }
 
     return Call{Module: nil, Function: fn.(Ast), Arguments: arguments }, nil
@@ -449,12 +453,12 @@ Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
         }
     }
 
-    return BasicAst{Type: "Arguments", Subvalues: args, ValueType:CONTAINER }, nil
+    return Container{Type: "Arguments", Subvalues: args}, nil
 }
 /
 '(' _ argument:Expr _ ')' {
     args := []Ast{argument.(Ast)}
-    return BasicAst{Type: "Arguments", Subvalues: args, ValueType:CONTAINER }, nil
+    return Container{Type: "Arguments", Subvalues: args}, nil
 }
 /
 Unit
@@ -473,9 +477,9 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
             subvalues = append(subvalues, op, v)
         }
 
-        return BasicAst{Type: "CompoundExpr", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Container{Type: "CompoundExpr", Subvalues: subvalues }, nil
     } else {
-        return BasicAst{Type: "CompoundExpr", Subvalues: []Ast{op.(Ast)}, ValueType:CONTAINER }, nil
+        return Container{Type: "CompoundExpr", Subvalues: []Ast{op.(Ast)} }, nil
     }
 }
 
@@ -494,7 +498,7 @@ BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return BasicAst{Type: "BinOpBool", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Container{Type: "BinOpBool", Subvalues: subvalues }, nil
     } else {
         return first.(Ast), nil
     }
@@ -513,7 +517,7 @@ BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return BasicAst{Type: "BinOpEquality", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Container{Type: "BinOpEquality", Subvalues: subvalues }, nil
     } else {
         return first.(Ast), nil
     }
@@ -533,7 +537,7 @@ BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return BasicAst{Type: "BinOpLow", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Container{Type: "BinOpLow", Subvalues: subvalues }, nil
     } else {
         return first.(Ast), nil
     }
@@ -553,7 +557,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return BasicAst{Type: "BinOpHigh", Subvalues: subvalues, ValueType:CONTAINER }, nil
+        return Container{Type: "BinOpHigh", Subvalues: subvalues}, nil
     } else {
         return first.(Ast), nil
     }
@@ -561,7 +565,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
 
 BinOpParens = '(' _ first:BinOp _ ')' {
     //fmt.Println("binopparens", first)
-    return BasicAst{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}, ValueType:CONTAINER }, nil
+    return Container{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}}, nil
 } / Value
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
@@ -610,16 +614,19 @@ ArrayLiteral = '[' _ first:Expr _ rest:(',' _ Expr _)* ','? _ ']' {
             subvalues = append(subvalues, v)
         }
     }
-    return BasicAst{Type: "Array", Subvalues: subvalues, ValueType:CONTAINER }, nil
+    return ArrayType{Subvalues: subvalues}, nil
 }
 
 VariantInstance = name:ModuleName _ args:Arguments {
     arguments := []Ast{}
 
-    if args.(BasicAst).ValueType != NIL {
-        arguments = args.(BasicAst).Subvalues
-
+    switch args.(type) {
+    case Container:
+        arguments = args.(Container).Subvalues
+    default:
+        arguments = []Ast{}
     }
+
     return VariantInstance{Name:name.(BasicAst).StringValue, Arguments: arguments }, nil
 }
 
