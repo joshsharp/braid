@@ -100,47 +100,56 @@ let main = func {
 
 	lines := strings.Split(input, "\n")
 
-	//fmt.Println(input)
+	// first we make a reader from the input, which is a string
 	r := strings.NewReader(input)
-	result, err := ast.ParseReader("", r) //FailureTracking(true)
+	// then we parse the input into ast
+	result, err := ast.ParseReader("", r)
 
 	if err != nil {
 
 		fmt.Println("ERROR:")
+
 		list := err.(ast.ErrorLister).Errors()
 		for _, err := range list {
-
+			// for each error, get the internal error
 			pe := err.(ast.ParserError)
 			printError(pe, lines)
 		}
 	} else {
+		// print the input
 		for i, el := range lines {
 			fmt.Printf("%03d|%s\n", i+1, el)
 		}
 
+		// print the ast
 		a := result.(ast.Ast)
 		fmt.Println("=", a.Print(0))
 
-		types := types.Infer(a.(ast.Module))
+		// infer types for the ast
+		typeMap := types.Infer(a.(ast.Module))
 
-		fmt.Println(a.Compile(types))
+		// print the compiled Go
+		fmt.Println(a.Compile(typeMap))
 	}
 
 }
 
 func printError(pe ast.ParserError, lines []string) {
-	//for (i < pe.pos.line){
+
+	// determine how many past lines to render
 	start := pe.Pos()[0] - 1
 	if pe.Pos()[0] >= 5 {
 		start = pe.Pos()[0] - 5
 	}
 
+	// print those past lines up until the line of the error
 	for i, el := range lines[start:pe.Pos()[0]] {
 		offset := start
 		fmt.Printf("%03d|%s\n", i+1+offset, el)
 		//i += 1
 	}
 
+	// print the caret pointing to the position
 	line := lines[pe.Pos()[0]-1]
 	fmt.Printf("    ")
 	for _, el := range line[:pe.Pos()[1]-1] {
@@ -151,6 +160,8 @@ func printError(pe ast.ParserError, lines []string) {
 		}
 	}
 	fmt.Printf("^\n\n")
+
+	// print the actual error
 	fmt.Printf("Line %d, character %d: ", pe.Pos()[0], pe.Pos()[1])
 	fmt.Println(pe.InnerError())
 }
