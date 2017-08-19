@@ -5,6 +5,7 @@ import (
 	"strings"
 	"braid/types"
 	"braid/ast"
+	"braid/compiler"
 )
 
 func main() {
@@ -39,16 +40,6 @@ let main = func {
 	# let mmm = 1 + 1
 }
 `, `
-let adder = func a b {
-    # whoop
-    let b = 4 + 5
-    # hi
-	Mod.f(4, 5)
-    # yes
-	let b = f()
-
-}
-
 let main = func {
 	# one
 	let a = 2
@@ -96,7 +87,7 @@ let main = func {
 
 		`}
 
-	input := examples[2]
+	input := examples[1]
 
 	lines := strings.Split(input, "\n")
 
@@ -125,11 +116,16 @@ let main = func {
 		a := result.(ast.Ast)
 		fmt.Println("=", a.Print(0))
 
+		env := make(types.State)
+
 		// infer types for the ast
-		typeMap := types.Infer(a.(ast.Module))
+		_, err := types.Infer(a.(ast.Module), &env, nil)
+		if err != nil {
+			return
+		}
 
 		// print the compiled Go
-		fmt.Println(a.Compile(typeMap))
+		fmt.Println(a.Compile(env))
 	}
 
 }

@@ -316,26 +316,17 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
 
 AnyType = BaseType / TypeParameter
 
-Assignment = _ "let" __ i:Assignable rest:(',' _ Assignable)* _ '=' _ expr:Expr _ {
+Assignment = _ "let" __ i:Assignable '=' _ expr:Expr _ {
     //fmt.Println("assignment:", string(c.text))
-    vals := []Ast{i.(Ast)}
-    if len(rest.([]interface{})) > 0 {
-        restSl := toIfaceSlice(rest)
-        for _, v := range restSl {
-            // we can get each item in the grammar by index
-            restExpr := toIfaceSlice(v)
-            v := restExpr[2].(Ast)
-            vals = append(vals, v)
-        }
-    }
-    return Assignment{Left: vals, Right: expr.(Ast)}, nil
+
+    return Assignment{Left: i.(Ast), Right: expr.(Ast)}, nil
 }
 /
 _ "let" __ !Assignable {
     return nil, errors.New("Variable name or '_' (unused result character) required here")
 }
 /
-_ "let" __ i:Assignable rest:(',' _ Assignable)* _ !'=' {
+_ "let" __ i:Assignable _ !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
@@ -651,15 +642,15 @@ RecordInstance = name:ModuleName _ '{' _ firstName:VariableName _ ':' _ firstVal
 }
 
 TypeParameter = '\'' VariableName {
-    return  BasicAst{Type:"TypeParam", StringValue:string(c.text), ValueType:STRING}, nil
+    return BasicAst{Type:"TypeParam", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 VariableName = !Reserved ([a-z]+ [a-zA-Z0-9_]*) {
-    return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
+    return BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 ModuleName = ([A-Z]+ [a-zA-Z0-9_]*) {
-    return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
+    return BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 Const = '-'? [0-9]+ !'.' {
@@ -667,14 +658,14 @@ Const = '-'? [0-9]+ !'.' {
     if err != nil {
         return nil, err
     }
-    return  BasicAst{Type:"Integer", IntValue:val, ValueType:INT}, nil
+    return BasicAst{Type:"Integer", IntValue:val, ValueType:INT}, nil
 }
 / '-'? [0-9]+ '.' [0-9]+ {
     val, err := strconv.ParseFloat(string(c.text),64)
     if err != nil {
         return nil, err
     }
-    return  BasicAst{Type:"Float", FloatValue:val, ValueType:FLOAT}, nil
+    return BasicAst{Type:"Float", FloatValue:val, ValueType:FLOAT}, nil
 }
 / "true" / "false" {
     if string(c.text) == "true" {
@@ -695,11 +686,11 @@ Const = '-'? [0-9]+ !'.' {
 } / ArrayLiteral / RecordInstance / VariantInstance
 
 Unit = "()" {
-    return BasicAst{Type:"Nil", ValueType:NIL}, nil
+    return BasicAst{Type:"Unit", ValueType:NIL}, nil
 }
 
 Unused = ('_') {
-    return  BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
+    return  BasicAst{Type:"Identifier", StringValue:"_", ValueType:STRING}, nil
 }
 
 Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+

@@ -5,7 +5,6 @@ import (
 )
 
 type ValueType int
-type State map[string]interface{}
 
 const (
     STRING = iota
@@ -13,7 +12,6 @@ const (
     FLOAT
     BOOL
     CHAR
-    CONTAINER
     NIL
 )
 
@@ -70,7 +68,7 @@ type If struct {
 }
 
 type Assignment struct {
-    Left []Ast
+    Left Ast
     Right Ast
 }
 
@@ -104,8 +102,8 @@ type VariantConstructor struct {
 
 type Ast interface {
     Print(indent int) string
-    Compile(state State) string
 }
+
 
 func (a BasicAst) String() string {
     switch (a.ValueType){
@@ -346,10 +344,8 @@ func (a Assignment) Print(indent int) string {
         str += "  "
     }
     str += "Assignment:\n"
+	str += a.Left.Print(indent+1)
 
-    for _, el := range(a.Left){
-        str += el.Print(indent+1)
-    }
     str += a.Right.Print(indent+1)
 
     return str
