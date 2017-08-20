@@ -218,7 +218,7 @@ ExprLine = e:Expr &'\n' {
 
 Comment = _ '#' comment:(!EscapedChar .)* &'\n' {
     //fmt.Println("comment:", string(c.text))
-    return BasicAst{Type: "Comment", StringValue: string(c.text[1:]), ValueType:STRING }, nil
+    return Comment{StringValue: string(c.text[1:])}, nil
 }
 
 TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
@@ -316,7 +316,7 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
 
 AnyType = BaseType / TypeParameter
 
-Assignment = _ "let" __ i:Assignable '=' _ expr:Expr _ {
+Assignment = _ "let" __ i:Assignable _ '=' _ expr:Expr _ {
     //fmt.Println("assignment:", string(c.text))
 
     return Assignment{Left: i.(Ast), Right: expr.(Ast)}, nil

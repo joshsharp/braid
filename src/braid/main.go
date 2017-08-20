@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
-	"braid/types"
 	"braid/ast"
-	"braid/compiler"
 )
 
 func main() {
@@ -114,12 +112,12 @@ let main = func {
 
 		// print the ast
 		a := result.(ast.Ast)
-		fmt.Println("=", a.Print(0))
+		//fmt.Println("=", a.Print(0))
 
-		env := make(types.State)
+		env := make(ast.State)
 
 		// infer types for the ast
-		_, err := types.Infer(a.(ast.Module), &env, nil)
+		_, err := ast.Infer(a.(ast.Module), &env, nil)
 		if err != nil {
 			return
 		}

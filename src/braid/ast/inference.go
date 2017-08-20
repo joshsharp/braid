@@ -1,7 +1,6 @@
-package types
+package ast
 
 import (
-    "braid/ast"
 	"fmt"
 )
 
@@ -68,7 +67,7 @@ func NewTypeVariable() TypeVariable {
 
 type State map[string]Type
 
-func Infer(node ast.Ast, env *State, nonGeneric []Type) (Type, error) {
+func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 	/*
 	Computes the type of the expression given by node.
 
@@ -89,40 +88,102 @@ func Infer(node ast.Ast, env *State, nonGeneric []Type) (Type, error) {
 		The computed type of the expression.
 	*/
 	switch node.(type){
-	case ast.Module:
-		return Unit, nil
-	case ast.BasicAst:
-		switch node.(ast.BasicAst).ValueType {
-		case ast.CHAR:
-			return Char, nil
-		case ast.INT:
-			return Integer, nil
-		case ast.FLOAT:
-			return Float, nil
-		case ast.BOOL:
-			return Boolean, nil
+
+	case Module:
+		statements := node.(Module).Subvalues
+		for _, s := range statements {
+			t, err := Infer(s, env, nonGeneric)
+			if err != nil {
+				fmt.Println(err.Error())
+				return nil, err
+			} else {
+				fmt.Printf("Infer %s: %s\n", s.Print(0), t.GetName())
+			}
 		}
-	case ast.Assignment:
-		rightSide, err := Infer(node.(ast.Assignment).Right, env, nonGeneric)
+		return Unit, nil
+	case BasicAst:
+		switch node.(BasicAst).ValueType {
+		case CHAR:
+			return Char, nil
+		case INT:
+			return Integer, nil
+		case FLOAT:
+			return Float, nil
+		case BOOL:
+			return Boolean, nil
+		case STRING:
+			return String, nil
+		}
+	case Comment:
+		return Unit, nil
+	case Assignment:
+		rightSide, err := Infer(node.(Assignment).Right, env, nonGeneric)
 		if err != nil {
 			return nil, err
 		}
-		(*env)[node.(ast.Assignment).Left.(ast.BasicAst).StringValue] = rightSide
+		(*env)[node.(Assignment).Left.(BasicAst).StringValue] = rightSide
 		return rightSide, nil
 
-	case ast.Call:
+	case Call:
 		return NewTypeVariable(), nil
-	case ast.If:
+	case If:
 		return NewTypeVariable(), nil
-	case ast.Container:
+	case Container:
+		switch node.(Container).Type {
+		case "Array":
+			// TODO: Unify these types, must all be the same
+			var lastType Type
+			for _, s := range node.(Container).Subvalues {
+				t, err := Infer(s, env, nonGeneric)
+				lastType = t
+
+				if err != nil {
+					fmt.Println(err.Error())
+					return nil, err
+				} else {
+					fmt.Printf("Infer %s: %s\n", s.Print(0), lastType.GetName())
+				}
+			}
+			return lastType, nil
+
+		case "CompoundExpr":
+			// TODO: Unify these types, must all be the same
+			var lastType Type
+			for _, s := range node.(Container).Subvalues {
+				t, err := Infer(s, env, nonGeneric)
+				lastType = t
+
+				if err != nil {
+					fmt.Println(err.Error())
+					return nil, err
+				} else {
+					fmt.Printf("Infer %s: %s\n", s.Print(0), lastType.GetName())
+				}
+			}
+			return lastType, nil
+
+		}
 		return List, nil
-	case ast.Func:
-		return NewTypeVariable(), nil
+	case Func:
+		statements := node.(Func).Subvalues
+		var lastType Type
+		for _, s := range statements {
+			t, err := Infer(s, env, nonGeneric)
+			lastType = t
+
+			if err != nil {
+				fmt.Println(err.Error())
+				return nil, err
+			} else {
+				fmt.Printf("Infer %s: %s\n", s.Print(0), lastType.GetName())
+			}
+		}
+		return lastType, nil
 	default:
-		panic("Don't know this type")
+		panic("Don't know this type: " + node.Print(0))
 	}
 
-	return nil, InferenceError{"Don't know this type"}
+	return nil, InferenceError{"Don't know this type: " + node.Print(0)}
 }
 
 

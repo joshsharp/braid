@@ -1,17 +1,12 @@
-package compiler
+package ast
 
 import (
 	"fmt"
 	"strings"
-	"braid/types"
-	"braid/ast"
 )
 
-type Ast interface {
-	Compile(state types.State) string
-}
 
-func (m ast.Module) Compile(state types.State) string {
+func (m Module) Compile(state State) string {
 	values := "package main\n\n"
 	for _, el := range m.Subvalues {
 		values += el.Compile(state)
@@ -19,9 +14,9 @@ func (m ast.Module) Compile(state types.State) string {
 	return values
 }
 
-func (a ast.BasicAst) Compile(state types.State) string {
+func (a BasicAst) Compile(state State) string {
 	switch a.ValueType {
-	case ast.STRING:
+	case STRING:
 		switch a.Type {
 		case "Comment":
 			return fmt.Sprintf("//%s\n", a.StringValue)
@@ -36,13 +31,13 @@ func (a ast.BasicAst) Compile(state types.State) string {
 		default:
 			return fmt.Sprintf("%s", a.StringValue)
 		}
-	case ast.CHAR:
+	case CHAR:
 		return fmt.Sprintf("'%s'", string(a.CharValue))
-	case ast.INT:
+	case INT:
 		return fmt.Sprintf("%d", a.IntValue)
-	case ast.FLOAT:
+	case FLOAT:
 		return fmt.Sprintf("%f", a.FloatValue)
-	case ast.BOOL:
+	case BOOL:
 		if a.BoolValue {
 			return "true"
 		}
@@ -54,7 +49,11 @@ func (a ast.BasicAst) Compile(state types.State) string {
 	return ""
 }
 
-func (a ast.ArrayType) Compile(state types.State) string {
+func (c Comment) Compile(state State) string {
+	return fmt.Sprintf("//%s\n", c.StringValue)
+}
+
+func (a ArrayType) Compile(state State) string {
 	values := "[]int{"
 	for _, el := range a.Subvalues {
 		values += el.Compile(state) + ","
@@ -62,7 +61,7 @@ func (a ast.ArrayType) Compile(state types.State) string {
 	return values + "}"
 }
 
-func (c ast.Container) Compile(state types.State) string {
+func (c Container) Compile(state State) string {
 	switch c.Type {
 	case "BinOpParens":
 		values := "("
@@ -79,22 +78,17 @@ func (c ast.Container) Compile(state types.State) string {
 	}
 }
 
-func (a ast.Assignment) Compile(state types.State) string {
+func (a Assignment) Compile(state State) string {
 	result := ""
 
-	left := make([]string, 0)
-	for _, el := range a.Left {
-		left = append(left, el.Compile(state))
-	}
-
-	result += strings.Join(left, ", ")
+	result += a.Left.Compile(state)
 	result += " := "
 	result += a.Right.Compile(state)
 	return result + "\n"
 
 }
 
-func (a ast.If) Compile(state types.State) string {
+func (a If) Compile(state State) string {
 	result := "\nif "
 
 	result += "(" + a.Condition.Compile(state) + ") {\n"
@@ -134,7 +128,7 @@ func (a ast.If) Compile(state types.State) string {
 
 }
 
-func (a ast.Call) Compile(state types.State) string {
+func (a Call) Compile(state State) string {
 	result := ""
 	if a.Module != nil {
 		result += a.Module.Compile(state) + "."
@@ -152,7 +146,7 @@ func (a ast.Call) Compile(state types.State) string {
 	return result
 }
 
-func (a ast.VariantInstance) Compile(state types.State) string {
+func (a VariantInstance) Compile(state State) string {
 	result := ""
 	result += a.Name + "{"
 	if len(a.Arguments) > 0 {
@@ -167,7 +161,7 @@ func (a ast.VariantInstance) Compile(state types.State) string {
 	return result
 }
 
-func (a ast.RecordInstance) Compile(state types.State) string {
+func (a RecordInstance) Compile(state State) string {
 	result := ""
 	result += a.Name + "{"
 	if len(a.Values) > 0 {
@@ -185,7 +179,7 @@ func (a ast.RecordInstance) Compile(state types.State) string {
 	return result
 }
 
-func (a ast.Func) Compile(state types.State) string {
+func (a Func) Compile(state State) string {
 	// TODO: Only compile once we have concrete implementations
 	result := "func " + a.Name + " ("
 	if len(a.Arguments) > 0 {
@@ -214,12 +208,12 @@ func (a ast.Func) Compile(state types.State) string {
 	return result
 }
 
-func (a ast.AliasType) Compile(state types.State) string {
+func (a AliasType) Compile(state State) string {
 	// TODO: Only compile once we have concrete implementations
 	return "type " + a.Name + " int32\n\n"
 }
 
-func (r ast.RecordType) Compile(state types.State) string {
+func (r RecordType) Compile(state State) string {
 	// TODO: Only compile once we have concrete implementations
 	str := "type " + r.Name + " struct {\n"
 
@@ -239,7 +233,7 @@ func (r ast.RecordType) Compile(state types.State) string {
 	return str
 }
 
-func (v ast.VariantType) Compile(state types.State) string {
+func (v VariantType) Compile(state State) string {
 	// TODO: Only compile once we have concrete implementations
 	str := "type " + v.Name + " interface {\n" +
 		"\tsumtype()\n" +
@@ -252,7 +246,7 @@ func (v ast.VariantType) Compile(state types.State) string {
 	return str
 }
 
-func (c ast.VariantConstructor) Compile(state types.State) string {
+func (c VariantConstructor) Compile(state State) string {
 	str := "type " + c.Name + " struct {\n"
 	for i, el := range c.Fields {
 		str += fmt.Sprintf("\tF%d", i) + " " + el.Compile(state)
@@ -265,6 +259,6 @@ func (c ast.VariantConstructor) Compile(state types.State) string {
 	return str
 }
 
-func (f ast.RecordField) Compile(state types.State) string {
+func (f RecordField) Compile(state State) string {
 	return f.Name + " " + f.Type.Compile(state) + "\n"
 }

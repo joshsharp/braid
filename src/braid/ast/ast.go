@@ -30,6 +30,10 @@ type BasicAst struct {
     ValueType ValueType
 }
 
+type Comment struct {
+    StringValue string
+}
+
 type Container struct {
 	Type string
 	Subvalues []Ast
@@ -102,6 +106,7 @@ type VariantConstructor struct {
 
 type Ast interface {
     Print(indent int) string
+    Compile(state State) string
 }
 
 
@@ -136,6 +141,10 @@ func (c Container) String() string {
 		values += fmt.Sprint(el)
 	}
 	return values
+}
+
+func (c Comment) String() string {
+    return c.StringValue
 }
 
 func (a ArrayType) String() string {
@@ -192,6 +201,16 @@ func (a BasicAst) Print(indent int) string {
         str += "  "
     }
     str += fmt.Sprintf("%s %s:\n", a.Type, a)
+    return str
+}
+
+func (c Comment) Print(indent int) string {
+    str := ""
+
+    for i := 0; i < indent; i++ {
+        str += "  "
+    }
+    str += fmt.Sprintf("Comment: %s\n", c.StringValue)
     return str
 }
 
