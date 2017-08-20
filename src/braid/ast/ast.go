@@ -34,6 +34,15 @@ type Comment struct {
     StringValue string
 }
 
+type Identifier struct {
+	StringValue string
+}
+
+type Expr struct {
+	Type string
+	Subvalues []Ast
+}
+
 type Container struct {
 	Type string
 	Subvalues []Ast
@@ -137,7 +146,15 @@ func (a BasicAst) String() string {
 
 func (c Container) String() string {
 	values := ""
-	for _, el := range(c.Subvalues){
+	for _, el := range c.Subvalues{
+		values += fmt.Sprint(el)
+	}
+	return values
+}
+
+func (c Expr) String() string {
+	values := ""
+	for _, el := range c.Subvalues{
 		values += fmt.Sprint(el)
 	}
 	return values
@@ -147,9 +164,13 @@ func (c Comment) String() string {
     return c.StringValue
 }
 
+func (i Identifier) String() string {
+	return i.StringValue
+}
+
 func (a ArrayType) String() string {
 	values := ""
-	for _, el := range(a.Subvalues){
+	for _, el := range a.Subvalues{
 		values += fmt.Sprint(el)
 	}
 	return values
@@ -162,7 +183,7 @@ func (m Module) Print(indent int) string {
         str += "  "
     }
     str += "Module:\n"
-    for _, el := range(m.Subvalues){
+    for _, el := range m.Subvalues{
         str += el.Print(indent+1)
     }
     return str
@@ -175,7 +196,20 @@ func (c Container) Print(indent int) string {
 		str += "  "
 	}
 	str += "Container " + c.Type + ":\n"
-	for _, el := range(c.Subvalues){
+	for _, el := range c.Subvalues{
+		str += el.Print(indent+1)
+	}
+	return str
+}
+
+func (c Expr) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "Container " + c.Type + ":\n"
+	for _, el := range c.Subvalues{
 		str += el.Print(indent+1)
 	}
 	return str
@@ -188,7 +222,7 @@ func (a ArrayType) Print(indent int) string {
 		str += "  "
 	}
 	str += "Array: \n"
-	for _, el := range(a.Subvalues){
+	for _, el := range a.Subvalues{
 		str += el.Print(indent+1)
 	}
 	return str
@@ -212,6 +246,10 @@ func (c Comment) Print(indent int) string {
     }
     str += fmt.Sprintf("Comment: %s\n", c.StringValue)
     return str
+}
+
+func (i Identifier) Print(indent int) string {
+	return i.StringValue
 }
 
 func (a Func) String() string {
@@ -255,7 +293,7 @@ func (a Call) Print(indent int) string {
     }
     str += "Call:\n"
     if a.Module != nil {
-        str += a.Module.Print(indent + 1)
+        str += a.Module.Print(indent + 1) + "."
     }
     str += a.Function.Print(indent + 1)
 

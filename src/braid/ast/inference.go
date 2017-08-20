@@ -11,7 +11,7 @@ var (
 	Boolean = TypeOperator{"bool",[]Type{}}
 	Float = TypeOperator{"int",[]Type{}}
 	String = TypeOperator{"string",[]Type{}}
-	Char = TypeOperator{"char",[]Type{}}
+	Rune = TypeOperator{"rune",[]Type{}}
 	List = TypeOperator{"list",[]Type{}}
 	Unit = TypeOperator{"()",[]Type{}}
 
@@ -44,6 +44,8 @@ type Type interface {
 	GetName() string
 }
 
+type State map[string]Type
+
 func (t TypeVariable) GetName() string {
 	return t.Name
 }
@@ -65,7 +67,6 @@ func NewTypeVariable() TypeVariable {
 	return t
 }
 
-type State map[string]Type
 
 func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 	/*
@@ -94,17 +95,16 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		for _, s := range statements {
 			t, err := Infer(s, env, nonGeneric)
 			if err != nil {
-				fmt.Println(err.Error())
 				return nil, err
 			} else {
-				fmt.Printf("Infer %s: %s\n", s.Print(0), t.GetName())
+				fmt.Printf("%s\nInfer: %s\n", s.Print(1), t.GetName())
 			}
 		}
 		return Unit, nil
 	case BasicAst:
 		switch node.(BasicAst).ValueType {
 		case CHAR:
-			return Char, nil
+			return Rune, nil
 		case INT:
 			return Integer, nil
 		case FLOAT:
@@ -121,49 +121,58 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		(*env)[node.(Assignment).Left.(BasicAst).StringValue] = rightSide
+		if node.(Assignment).Left.(Identifier).StringValue != "_" {
+			(*env)[node.(Assignment).Left.(Identifier).StringValue] = rightSide
+		}
 		return rightSide, nil
-
+	case Identifier:
+		if node.(Identifier).StringValue == "_" {
+			return NewTypeVariable(), nil
+		}
+		return GetType(node.(Identifier).StringValue, *env, nonGeneric)
 	case Call:
 		return NewTypeVariable(), nil
 	case If:
 		return NewTypeVariable(), nil
 	case Container:
-		switch node.(Container).Type {
-		case "Array":
-			// TODO: Unify these types, must all be the same
-			var lastType Type
-			for _, s := range node.(Container).Subvalues {
-				t, err := Infer(s, env, nonGeneric)
-				lastType = t
 
-				if err != nil {
-					fmt.Println(err.Error())
-					return nil, err
-				} else {
-					fmt.Printf("Infer %s: %s\n", s.Print(0), lastType.GetName())
-				}
-			}
-			return lastType, nil
-
-		case "CompoundExpr":
-			// TODO: Unify these types, must all be the same
-			var lastType Type
-			for _, s := range node.(Container).Subvalues {
-				t, err := Infer(s, env, nonGeneric)
-				lastType = t
-
-				if err != nil {
-					fmt.Println(err.Error())
-					return nil, err
-				} else {
-					fmt.Printf("Infer %s: %s\n", s.Print(0), lastType.GetName())
-				}
-			}
-			return lastType, nil
-
-		}
 		return List, nil
+	case ArrayType:
+
+		var lastType Type
+		for _, s := range node.(ArrayType).Subvalues {
+			t, err := Infer(s, env, nonGeneric)
+			if lastType != nil {
+				err := Unify(&t, &lastType)
+				if err != nil {
+					return nil, err
+				}
+			}
+			lastType = t
+
+			if err != nil {
+				fmt.Println(err.Error())
+				return nil, err
+			} else {
+				fmt.Printf("%s\nInfer: %s\n", s.Print(1), lastType.GetName())
+			}
+		}
+		return lastType, nil
+
+	case Expr:
+		var lastType Type
+		for _, s := range node.(Expr).Subvalues {
+			t, err := Infer(s, env, nonGeneric)
+			lastType = t
+
+			if err != nil {
+				return nil, err
+			} else {
+				fmt.Printf("%s\nInfer: %s\n", s.Print(1), lastType.GetName())
+			}
+		}
+		return lastType, nil
+
 	case Func:
 		statements := node.(Func).Subvalues
 		var lastType Type
@@ -172,10 +181,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			lastType = t
 
 			if err != nil {
-				fmt.Println(err.Error())
 				return nil, err
 			} else {
-				fmt.Printf("Infer %s: %s\n", s.Print(0), lastType.GetName())
+				fmt.Printf("%s\nInfer: %s\n", s.Print(1), lastType.GetName())
 			}
 		}
 		return lastType, nil
@@ -208,6 +216,9 @@ func Unify(t1 *Type, t2 *Type) error {
     */
 	a := Prune(*t1)
 	b := Prune(*t2)
+
+	fmt.Println("Unify", a, b)
+
 	switch a.(type){
 	case TypeVariable:
 		if a.(TypeVariable).GetName() != b.GetName(){
@@ -216,19 +227,22 @@ func Unify(t1 *Type, t2 *Type) error {
 			}
 			//a.(TypeVariable).Instance = b
 		}
+		return nil
 	case TypeOperator:
 		switch b.(type) {
 		case TypeVariable:
 			return Unify(&b, &a)
 		case TypeOperator:
 			aTypeLen := len(a.(TypeOperator).Types)
-			if a.GetName() != b.GetName() ||
-				aTypeLen != len(b.(TypeOperator).Types){
+			bTypeLen := len(b.(TypeOperator).Types)
+			if a.GetName() != b.GetName() || aTypeLen != bTypeLen{
 				if len(b.(TypeOperator).Types) > 0 {
 					return Unify(&b, &a)
-				} else if a.(TypeOperator).Types[aTypeLen - 1].GetName() ==
-					b.(TypeOperator).GetName(){
-					return nil
+				} else if aTypeLen > 0 {
+					if a.(TypeOperator).Types[aTypeLen - 1].GetName() ==
+						b.(TypeOperator).GetName() {
+						return nil
+					}
 				}
 				return InferenceError{fmt.Sprintf("Type mismatch: %s != %s", a.GetName(), b.GetName())}
 			}
@@ -236,6 +250,7 @@ func Unify(t1 *Type, t2 *Type) error {
 			for i, el := range a.(TypeOperator).Types {
 				Unify(&el, &b.(TypeOperator).Types[i])
 			}
+			return nil
 		}
 	}
 	return InferenceError{fmt.Sprintf("Types not unified: %s and %s", a.GetName(), b.GetName())}

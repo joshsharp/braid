@@ -79,7 +79,7 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Variant type literals
 [X] Function application should use parentheses 
 [X] Type construction also
-
+[ ] Separate AST structs out so not so many multi-use types
 
 Compiling currently maps straight to outputting code text, needs more passes:
 - [ ] Hindley-Milner type inference, so we can predict errors and map function 

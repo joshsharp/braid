@@ -53,6 +53,10 @@ func (c Comment) Compile(state State) string {
 	return fmt.Sprintf("//%s\n", c.StringValue)
 }
 
+func (i Identifier) Compile(state State) string {
+	return i.StringValue
+}
+
 func (a ArrayType) Compile(state State) string {
 	values := "[]int{"
 	for _, el := range a.Subvalues {
@@ -72,6 +76,23 @@ func (c Container) Compile(state State) string {
 	default:
 		values := ""
 		for _, el := range c.Subvalues {
+			values += el.Compile(state)
+		}
+		return values
+	}
+}
+
+func (e Expr) Compile(state State) string {
+	switch e.Type {
+	case "BinOpParens":
+		values := "("
+		for _, el := range e.Subvalues {
+			values += el.Compile(state)
+		}
+		return values + ")"
+	default:
+		values := ""
+		for _, el := range e.Subvalues {
 			values += el.Compile(state)
 		}
 		return values

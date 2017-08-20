@@ -10,7 +10,7 @@ func main() {
 	examples := []string{`
 # test
 let cheesy = func item item2 {
-	let _, b = 5.0 + 6.5
+	let b = 5.0 + 6.5
 	let c = [5, 6, 7]
     # more test
     item ++ " and " ++ item2 ++ " with cheese"
@@ -43,49 +43,52 @@ let main = func {
 	let a = 2
 	# two
 	let b = 3 + -2
+	let c = a + b
+	let d = [5, 6]
+	let e = b
 	let _ = List.add(1, 2, [3])
 	adder(4, 5)
 	Mod.f()
 }
 `,
-		`
-		type Person = { name: string, age: int }
+`
+type Person = { name: string, age: int }
 
-		type IntList = list int
+type IntList = list int
 
-		type Result 'a 'b =
-			| OK 'a
-			| Error 'b
+type Result 'a 'b =
+	| OK 'a
+	| Error 'b
 
-		type Option 'a =
-			| Some 'a
-			| None
+type Option 'a =
+	| Some 'a
+	| None
 
-		let main = func {
-			# thing
-			let a = 3
-			let b = 45
-			let c = 5
-			# no
-			let d = [5, 6]
-			let e = b
-			test((5 + 6), Person{name: "no", age: -1})
-		}
+let main = func {
+	# thing
+	let a = 3
+	let b = 45
+	let c = 5
+	# no
+	let d = [5, 6]
+	let e = b
+	test((5 + 6), Person{name: "no", age: -1})
+}
 
-		let test = func p {
-			let c = 5 + 5
-			# mm
-			let a = Person{name:"Josh", age: 32}
-			let b = OK("yes")
-			let c = Error("failed to do thing")
-			let d = Some("braid")
-			let e = None()
-			# hi
-		}
+let test = func p {
+	let c = 5 + 5
+	# mm
+	let a = Person{name:"Josh", age: 32}
+	let b = OK("yes")
+	let c = Error("failed to do thing")
+	let d = Some("braid")
+	let e = None()
+	# hi
+}
 
-		`}
+`}
 
-	input := examples[1]
+	input := examples[0]
 
 	lines := strings.Split(input, "\n")
 
@@ -119,8 +122,11 @@ let main = func {
 		// infer types for the ast
 		_, err := ast.Infer(a.(ast.Module), &env, nil)
 		if err != nil {
+			fmt.Println(err.Error())
 			return
 		}
+
+		fmt.Println(env)
 
 		// print the compiled Go
 		fmt.Println(a.Compile(env))

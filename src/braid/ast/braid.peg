@@ -237,7 +237,7 @@ TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(_
         }
     }
 
-    return AliasType{Name: name.(BasicAst).StringValue, Params: parameters, Types: fields }, nil
+    return AliasType{Name: name.(Identifier).StringValue, Params: parameters, Types: fields }, nil
 }
 /
 _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
@@ -256,7 +256,7 @@ _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
         }
     }
 
-    return RecordType{Name: name.(BasicAst).StringValue, Fields: fields}, nil
+    return RecordType{Name: name.(Identifier).StringValue, Fields: fields}, nil
 }
 /
 _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _ rest:(VariantConstructor)+ {
@@ -271,11 +271,11 @@ _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _ rest:(VariantCons
         }
     }
 
-    return VariantType{Name: name.(BasicAst).StringValue, Params: parameters, Constructors: constructors}, nil
+    return VariantType{Name: name.(Identifier).StringValue, Params: parameters, Constructors: constructors}, nil
 }
 
 RecordFieldDefn = name:VariableName _ ':' _ t:(AnyType) {
-    return RecordField{Name: name.(BasicAst).StringValue, Type: t.(Ast)}, nil
+    return RecordField{Name: name.(Identifier).StringValue, Type: t.(Ast)}, nil
 }
 
 VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
@@ -293,8 +293,8 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
         }
     }
 
-    record := RecordType{Name: name.(BasicAst).StringValue, Fields: fields}
-    return VariantConstructor{Name: name.(BasicAst).StringValue, Fields: []Ast{record}}, nil
+    record := RecordType{Name: name.(Identifier).StringValue, Fields: fields}
+    return VariantConstructor{Name: name.(Identifier).StringValue, Fields: []Ast{record}}, nil
 }
 /
 '|' _ name:ModuleName rest:(__ AnyType)* _ {
@@ -311,7 +311,7 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
         }
     }
 
-    return VariantConstructor{Name: name.(BasicAst).StringValue, Fields: params}, nil
+    return VariantConstructor{Name: name.(Identifier).StringValue, Fields: params}, nil
 }
 
 AnyType = BaseType / TypeParameter
@@ -350,7 +350,7 @@ FuncDefn = _ "let" __ i:VariableName _ '=' _ "func" __ ids:(VariableName __)* _ 
             args = append(args, v)
         }
     }
-    return Func{Name: i.(BasicAst).StringValue, Arguments: args, Subvalues: subvalues }, nil
+    return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues }, nil
 }
 
 Expr = ex:(IfExpr / Call / CompoundExpr) {
@@ -468,9 +468,9 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
             subvalues = append(subvalues, op, v)
         }
 
-        return Container{Type: "CompoundExpr", Subvalues: subvalues }, nil
+        return Expr{Type: "Compound", Subvalues: subvalues }, nil
     } else {
-        return Container{Type: "CompoundExpr", Subvalues: []Ast{op.(Ast)} }, nil
+        return Expr{Type: "Compound", Subvalues: []Ast{op.(Ast)} }, nil
     }
 }
 
@@ -489,7 +489,7 @@ BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return Container{Type: "BinOpBool", Subvalues: subvalues }, nil
+        return Expr{Type: "BinOpBool", Subvalues: subvalues }, nil
     } else {
         return first.(Ast), nil
     }
@@ -508,7 +508,7 @@ BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return Container{Type: "BinOpEquality", Subvalues: subvalues }, nil
+        return Expr{Type: "BinOpEquality", Subvalues: subvalues }, nil
     } else {
         return first.(Ast), nil
     }
@@ -528,7 +528,7 @@ BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return Container{Type: "BinOpLow", Subvalues: subvalues }, nil
+        return Expr{Type: "BinOpLow", Subvalues: subvalues }, nil
     } else {
         return first.(Ast), nil
     }
@@ -548,7 +548,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
             op := restExpr[1].(Ast)
             subvalues = append(subvalues, op, v)
         }
-        return Container{Type: "BinOpHigh", Subvalues: subvalues}, nil
+        return Expr{Type: "BinOpHigh", Subvalues: subvalues}, nil
     } else {
         return first.(Ast), nil
     }
@@ -556,7 +556,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
 
 BinOpParens = '(' _ first:BinOp _ ')' {
     //fmt.Println("binopparens", first)
-    return Container{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}}, nil
+    return Expr{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}}, nil
 } / Value
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
@@ -642,15 +642,15 @@ RecordInstance = name:ModuleName _ '{' _ firstName:VariableName _ ':' _ firstVal
 }
 
 TypeParameter = '\'' VariableName {
-    return BasicAst{Type:"TypeParam", StringValue:string(c.text), ValueType:STRING}, nil
+    return Identifier{StringValue:string(c.text)}, nil
 }
 
 VariableName = !Reserved ([a-z]+ [a-zA-Z0-9_]*) {
-    return BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
+    return Identifier{StringValue:string(c.text)}, nil
 }
 
 ModuleName = ([A-Z]+ [a-zA-Z0-9_]*) {
-    return BasicAst{Type:"Identifier", StringValue:string(c.text), ValueType:STRING}, nil
+    return Identifier{StringValue:string(c.text)}, nil
 }
 
 Const = '-'? [0-9]+ !'.' {
@@ -690,7 +690,7 @@ Unit = "()" {
 }
 
 Unused = ('_') {
-    return  BasicAst{Type:"Identifier", StringValue:"_", ValueType:STRING}, nil
+    return  Identifier{StringValue:"_"}, nil
 }
 
 Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
