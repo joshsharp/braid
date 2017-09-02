@@ -114,6 +114,7 @@ type VariantConstructor struct {
 }
 
 type Ast interface {
+    String() string
     Print(indent int) string
     Compile(state State) string
 }
@@ -152,20 +153,40 @@ func (c Container) String() string {
 	return values
 }
 
-func (c Expr) String() string {
+func (m Module) String() string {
+	return m.Name
+}
+
+func (c Call) String() string {
+	return "Call to " + c.Function.String()
+}
+
+func (e Expr) String() string {
 	values := ""
-	for _, el := range c.Subvalues{
+	for _, el := range e.Subvalues{
 		values += fmt.Sprint(el)
 	}
 	return values
 }
 
+func (a Assignment) String() string {
+	return a.Left.String() + " = " + a.Right.String()
+}
+
 func (c Comment) String() string {
-    return c.StringValue
+    return "#" + c.StringValue
 }
 
 func (i Identifier) String() string {
 	return i.StringValue
+}
+
+func (r RecordType) String() string {
+	return r.Name
+}
+
+func (v VariantType) String() string {
+	return v.Name
 }
 
 func (a ArrayType) String() string {
@@ -253,7 +274,7 @@ func (i Identifier) Print(indent int) string {
 }
 
 func (a Func) String() string {
-    return "Func"
+    return "Func " + a.Name
 }
 
 func (i If) String() string {

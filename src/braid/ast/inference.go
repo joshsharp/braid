@@ -9,7 +9,7 @@ var (
 	nextVarName = "a"
 	Integer = TypeOperator{"int",[]Type{}}
 	Boolean = TypeOperator{"bool",[]Type{}}
-	Float = TypeOperator{"int",[]Type{}}
+	Float = TypeOperator{"float",[]Type{}}
 	String = TypeOperator{"string",[]Type{}}
 	Rune = TypeOperator{"rune",[]Type{}}
 	List = TypeOperator{"list",[]Type{}}
@@ -37,7 +37,8 @@ type TypeOperator struct {
 }
 
 type Function struct {
-	TypeOperator
+	Name string
+	Types []Type
 }
 
 type Type interface {
@@ -97,7 +98,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			if err != nil {
 				return nil, err
 			} else {
-				fmt.Printf("%s\nInfer: %s\n", s.Print(1), t.GetName())
+				fmt.Printf("Infer %s: %s\n", s.String(), t.GetName())
 			}
 		}
 		return Unit, nil
@@ -131,7 +132,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		}
 		return GetType(node.(Identifier).StringValue, *env, nonGeneric)
 	case Call:
-		return NewTypeVariable(), nil
+		if (*env)[node.(Call).Function.(Identifier).StringValue] != nil {
+			return (*env)[node.(Call).Function.(Identifier).StringValue].(Function).Types[0], nil
+		}
+		return nil, InferenceError{"Do not know the type of function " + node.(Call).Function.(Identifier).StringValue}
 	case If:
 		return NewTypeVariable(), nil
 	case Container:
@@ -154,7 +158,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				fmt.Println(err.Error())
 				return nil, err
 			} else {
-				fmt.Printf("%s\nInfer: %s\n", s.Print(1), lastType.GetName())
+				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
 			}
 		}
 		return lastType, nil
@@ -168,7 +172,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			if err != nil {
 				return nil, err
 			} else {
-				fmt.Printf("%s\nInfer: %s\n", s.Print(1), lastType.GetName())
+				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
 			}
 		}
 		return lastType, nil
@@ -176,22 +180,31 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 	case Func:
 		statements := node.(Func).Subvalues
 		var lastType Type
+		var newEnv = env
+
+		if len(node.(Func).Arguments) > 0 {
+			for _, el := range node.(Func).Arguments {
+				(*newEnv)[el.(Identifier).StringValue] = NewTypeVariable()
+			}
+		}
+
 		for _, s := range statements {
-			t, err := Infer(s, env, nonGeneric)
+			t, err := Infer(s, newEnv, nonGeneric)
 			lastType = t
 
 			if err != nil {
 				return nil, err
 			} else {
-				fmt.Printf("%s\nInfer: %s\n", s.Print(1), lastType.GetName())
+				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
 			}
 		}
+		(*env)[node.(Func).Name] = Function{Name: node.(Func).Name, Types: []Type{lastType}}
 		return lastType, nil
 	default:
-		panic("Don't know this type: " + node.Print(0))
+		panic("Don't know this type: " + node.String())
 	}
 
-	return nil, InferenceError{"Don't know this type: " + node.Print(0)}
+	return nil, InferenceError{"Don't know this type: " + node.String()}
 }
 
 

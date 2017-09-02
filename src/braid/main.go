@@ -10,12 +10,12 @@ func main() {
 	examples := []string{`
 # test
 let cheesy = func item item2 {
-	let b = 5.0 + 6.5
+	let b = 5.0 +. 6.5
 	let c = [5, 6, 7]
     # more test
     item ++ " and " ++ item2 ++ " with cheese"
-    
 }
+
 let tester = func a {
 	let nothing = a + 1
 	if a > 100 {
@@ -25,8 +25,8 @@ let tester = func a {
 	} else {
 		a + 100
 	}
-	
 }
+
 let main = func {
 	let something = func {
 		4 + 9
@@ -46,7 +46,7 @@ let main = func {
 	let c = a + b
 	let d = [5, 6]
 	let e = b
-	let _ = List.add(1, 2, [3])
+	let _ = List.add(1.0, 2.0, [3.0])
 	adder(4, 5)
 	Mod.f()
 }
