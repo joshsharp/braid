@@ -115,6 +115,19 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		case STRING:
 			return String, nil
 		}
+	case Operator:
+		switch node.(Operator).ValueType {
+		case CHAR:
+			return Rune, nil
+		case INT:
+			return Integer, nil
+		case FLOAT:
+			return Float, nil
+		case BOOL:
+			return Boolean, nil
+		case STRING:
+			return String, nil
+		}
 	case Comment:
 		return Unit, nil
 	case Assignment:
@@ -167,6 +180,12 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		var lastType Type
 		for _, s := range node.(Expr).Subvalues {
 			t, err := Infer(s, env, nonGeneric)
+			if lastType != nil {
+				err := Unify(&t, &lastType)
+				if err != nil {
+					return nil, err
+				}
+			}
 			lastType = t
 
 			if err != nil {
@@ -230,7 +249,7 @@ func Unify(t1 *Type, t2 *Type) error {
 	a := Prune(*t1)
 	b := Prune(*t2)
 
-	fmt.Println("Unify", a, b)
+	//fmt.Println("Unify", a, b)
 
 	switch a.(type){
 	case TypeVariable:

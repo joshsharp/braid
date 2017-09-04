@@ -49,6 +49,10 @@ func (a BasicAst) Compile(state State) string {
 	return ""
 }
 
+func (o Operator) Compile(state State) string {
+	return fmt.Sprintf(" %s ", o.StringValue)
+}
+
 func (c Comment) Compile(state State) string {
 	return fmt.Sprintf("//%s\n", c.StringValue)
 }

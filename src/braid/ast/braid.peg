@@ -562,28 +562,28 @@ BinOpParens = '(' _ first:BinOp _ ')' {
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
 
 OperatorBoolean = ( "not" / "or" / "and" ) {
-    return BasicAst{Type:"BoolOp", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 
 OperatorEquality = ( ">=" / "<=" / '<' / '>' / "===" / "=="){
-    return BasicAst{Type:"EqualityOperator", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 
 OperatorHigh = ( "/." / "*." ) {
-    return BasicAst{Type:"FloatOperator", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:FLOAT}, nil
 }
 / ( '*' / '/' / '^' ) {
-    return BasicAst{Type:"IntOperator", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:INT}, nil
 }
 / "++" {
-    return BasicAst{Type:"StringOperator", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:STRING}, nil
 }
 
 OperatorLow = ( "+." / "-." ) {
-    return BasicAst{Type:"FloatOperator", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:FLOAT}, nil
 }
 / ( '+' / '-' ) {
-    return BasicAst{Type:"IntOperator", StringValue:string(c.text), ValueType:STRING}, nil
+    return Operator{StringValue:string(c.text), ValueType:INT}, nil
 }
 
 Value = VariableName / Const

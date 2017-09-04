@@ -30,6 +30,11 @@ type BasicAst struct {
     ValueType ValueType
 }
 
+type Operator struct {
+	StringValue string
+	ValueType ValueType
+}
+
 type Comment struct {
     StringValue string
 }
@@ -145,6 +150,10 @@ func (a BasicAst) String() string {
     return "()"
 }
 
+func (o Operator) String() string {
+	return o.StringValue
+}
+
 func (c Container) String() string {
 	values := ""
 	for _, el := range c.Subvalues{
@@ -163,7 +172,10 @@ func (c Call) String() string {
 
 func (e Expr) String() string {
 	values := ""
-	for _, el := range e.Subvalues{
+	for i, el := range e.Subvalues{
+		if (i > 0 ){
+			values += " "
+		}
 		values += fmt.Sprint(el)
 	}
 	return values
@@ -257,6 +269,16 @@ func (a BasicAst) Print(indent int) string {
     }
     str += fmt.Sprintf("%s %s:\n", a.Type, a)
     return str
+}
+
+func (o Operator) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += fmt.Sprintf("%s:\n", o.StringValue)
+	return str
 }
 
 func (c Comment) Print(indent int) string {
