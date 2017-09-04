@@ -94,12 +94,18 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 	case Module:
 		statements := node.(Module).Subvalues
 		for _, s := range statements {
-			t, err := Infer(s, env, nonGeneric)
-			if err != nil {
-				return nil, err
-			} else {
-				fmt.Printf("Infer %s: %s\n", s.String(), t.GetName())
+			switch s.(type) {
+			case Comment:
+				continue
+			default:
+				t, err := Infer(s, env, nonGeneric)
+				if err != nil {
+					return nil, err
+				} else {
+					fmt.Printf("Infer %s: %s\n", s.String(), t.GetName())
+				}
 			}
+
 		}
 		return Unit, nil
 	case BasicAst:
@@ -159,6 +165,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		var lastType Type
 		for _, s := range node.(ArrayType).Subvalues {
 			t, err := Infer(s, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
 			if lastType != nil {
 				err := Unify(&t, &lastType)
 				if err != nil {
@@ -180,6 +189,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		var lastType Type
 		for _, s := range node.(Expr).Subvalues {
 			t, err := Infer(s, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
 			if lastType != nil {
 				err := Unify(&t, &lastType)
 				if err != nil {
@@ -208,15 +220,21 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		}
 
 		for _, s := range statements {
-			t, err := Infer(s, newEnv, nonGeneric)
-			lastType = t
+			switch s.(type) {
+			case Comment:
+				continue
+			default:
+				t, err := Infer(s, newEnv, nonGeneric)
+				lastType = t
 
-			if err != nil {
-				return nil, err
-			} else {
-				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+				if err != nil {
+					return nil, err
+				} else {
+					fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+				}
 			}
 		}
+
 		(*env)[node.(Func).Name] = Function{Name: node.(Func).Name, Types: []Type{lastType}}
 		return lastType, nil
 	default:
