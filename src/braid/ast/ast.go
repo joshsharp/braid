@@ -122,6 +122,7 @@ type Ast interface {
     String() string
     Print(indent int) string
     Compile(state State) string
+
 }
 
 

@@ -56,7 +56,14 @@ func (t TypeOperator) GetName() string {
 }
 
 func (t Function) GetName() string {
-	return t.Name
+	name := t.Name + " ("
+	for i, el := range t.Types {
+		if i > 0 {
+			name += " -> "
+		}
+		name += el.GetName()
+	}
+	return name + ")"
 }
 
 func NewTypeVariable() TypeVariable {
@@ -108,6 +115,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 
 		}
 		return Unit, nil
+
 	case BasicAst:
 		switch node.(BasicAst).ValueType {
 		case CHAR:
@@ -121,6 +129,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		case STRING:
 			return String, nil
 		}
+
 	case Operator:
 		switch node.(Operator).ValueType {
 		case CHAR:
@@ -134,8 +143,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		case STRING:
 			return String, nil
 		}
+
 	case Comment:
 		return Unit, nil
+
 	case Assignment:
 		rightSide, err := Infer(node.(Assignment).Right, env, nonGeneric)
 		if err != nil {
@@ -145,21 +156,27 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			(*env)[node.(Assignment).Left.(Identifier).StringValue] = rightSide
 		}
 		return rightSide, nil
+
 	case Identifier:
 		if node.(Identifier).StringValue == "_" {
 			return NewTypeVariable(), nil
 		}
 		return GetType(node.(Identifier).StringValue, *env, nonGeneric)
+
 	case Call:
 		if (*env)[node.(Call).Function.(Identifier).StringValue] != nil {
-			return (*env)[node.(Call).Function.(Identifier).StringValue].(Function).Types[0], nil
+			types := (*env)[node.(Call).Function.(Identifier).StringValue].(Function).Types
+			return types[len(types)-1], nil
 		}
 		return nil, InferenceError{"Do not know the type of function " + node.(Call).Function.(Identifier).StringValue}
+
 	case If:
 		return NewTypeVariable(), nil
-	case Container:
 
+	case Container:
+		// TODO: Do we use this concretely anywhere?
 		return List, nil
+
 	case ArrayType:
 
 		var lastType Type
@@ -213,12 +230,14 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		var lastType Type
 		var newEnv = env
 
+		// init argument names as type variables ready to be filled
 		if len(node.(Func).Arguments) > 0 {
 			for _, el := range node.(Func).Arguments {
 				(*newEnv)[el.(Identifier).StringValue] = NewTypeVariable()
 			}
 		}
 
+		// infer all statements
 		for _, s := range statements {
 			switch s.(type) {
 			case Comment:
@@ -235,8 +254,22 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			}
 		}
 
-		(*env)[node.(Func).Name] = Function{Name: node.(Func).Name, Types: []Type{lastType}}
-		return lastType, nil
+		// make our function type
+		fType := Function{Name: node.(Func).Name, Types: []Type{}}
+
+		// grab inferred types of args
+		if len(node.(Func).Arguments) > 0 {
+			for _, el := range node.(Func).Arguments {
+				fType.Types = append(fType.Types, (*newEnv)[el.(Identifier).StringValue])
+			}
+		}
+
+		// now the final type is the return type
+		fType.Types = append(fType.Types, lastType)
+
+		(*env)[node.(Func).Name] = fType
+		return fType, nil
+
 	default:
 		panic("Don't know this type: " + node.String())
 	}
@@ -275,7 +308,8 @@ func Unify(t1 *Type, t2 *Type) error {
 			if OccursInType(a.(TypeVariable), b){
 				return InferenceError{"Recursive unification"}
 			}
-			//a.(TypeVariable).Instance = b
+			// TODO: need to be able to assign to a here
+			//a.(TypeVariable).Instance
 		}
 		return nil
 	case TypeOperator:
@@ -307,6 +341,7 @@ func Unify(t1 *Type, t2 *Type) error {
 }
 
 func Prune(t Type) Type {
+	// TODO: not implemented
 	/*
 	Returns the currently defining instance of t.
 
