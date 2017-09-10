@@ -6,7 +6,7 @@ import (
 
 var (
 	nextId int  = 0
-	nextVarName = "a"
+	nextVarName = "'a"
 	Integer = TypeOperator{"int",[]Type{}}
 	Boolean = TypeOperator{"bool",[]Type{}}
 	Float = TypeOperator{"float",[]Type{}}
@@ -43,6 +43,7 @@ type Function struct {
 
 type Type interface {
 	GetName() string
+	GetType() string
 }
 
 type State map[string]Type
@@ -55,15 +56,31 @@ func (t TypeOperator) GetName() string {
 	return t.Name
 }
 
+func (t TypeVariable) GetType() string {
+	if t.Instance != nil {
+		return t.Instance.GetType()
+	}
+	return t.Name
+}
+
+func (t TypeOperator) GetType() string {
+	return t.Name
+}
+
 func (t Function) GetName() string {
-	name := t.Name + " ("
+	return t.Name
+}
+
+func (t Function) GetType() string {
+	name := "("
 	for i, el := range t.Types {
 		if i > 0 {
 			name += " -> "
 		}
 		name += el.GetName()
 	}
-	return name + ")"
+	name += ")"
+	return name
 }
 
 func NewTypeVariable() TypeVariable {
@@ -71,10 +88,9 @@ func NewTypeVariable() TypeVariable {
 	t.Id = nextId
 	nextId += 1
 	t.Name = nextVarName
-	nextVarName = string(rune(int(nextVarName[0])+1))
+	nextVarName = "'" + string(rune(int(nextVarName[1])+1))
 	return t
 }
-
 
 func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 	/*
@@ -109,7 +125,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				if err != nil {
 					return nil, err
 				} else {
-					fmt.Printf("Infer %s: %s\n", s.String(), t.GetName())
+					fmt.Printf("Infer %s: %s %s\n", s.String(), t.GetName(), t.GetType())
 				}
 			}
 
@@ -186,7 +202,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				return nil, err
 			}
 			if lastType != nil {
-				err := Unify(&t, &lastType)
+				err := Unify(&t, &lastType, env)
 				if err != nil {
 					return nil, err
 				}
@@ -210,7 +226,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				return nil, err
 			}
 			if lastType != nil {
-				err := Unify(&t, &lastType)
+				err := Unify(&t, &lastType, env)
 				if err != nil {
 					return nil, err
 				}
@@ -277,7 +293,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 	return nil, InferenceError{"Don't know this type: " + node.String()}
 }
 
-
 func GetType(name string, env State, nonGeneric []Type) (Type, error) {
 	if _, ok := env[name]; ok {
 		return Fresh(env[name].(Type), nonGeneric), nil
@@ -285,7 +300,7 @@ func GetType(name string, env State, nonGeneric []Type) (Type, error) {
 	return nil, InferenceError{"Undefined symbol " + name}
 }
 
-func Unify(t1 *Type, t2 *Type) error {
+func Unify(t1 *Type, t2 *Type, env *State) error {
 	/* Unify the two types t1 and t2.
 
 	Makes the types t1 and t2 the same.
@@ -300,7 +315,7 @@ func Unify(t1 *Type, t2 *Type) error {
 	a := Prune(*t1)
 	b := Prune(*t2)
 
-	//fmt.Println("Unify", a, b)
+	//fmt.Println("Unify", *t1, *t2)
 
 	switch a.(type){
 	case TypeVariable:
@@ -308,20 +323,32 @@ func Unify(t1 *Type, t2 *Type) error {
 			if OccursInType(a.(TypeVariable), b){
 				return InferenceError{"Recursive unification"}
 			}
-			// TODO: need to be able to assign to a here
-			//a.(TypeVariable).Instance
+
+			// TODO: need to be able to assign to `a` here
+			newA := a.(TypeVariable)
+			newA.Instance = b
+			fmt.Printf("Unify %s is now %s\n", a.GetName(), b.GetName())
+			(*env)[a.GetName()] = newA
+
+			// try updating other refs to this typevariable
+			for k, v := range *env {
+				if v.GetName() == a.GetName(){
+					(*env)[k] = b
+				}
+			}
+
 		}
 		return nil
 	case TypeOperator:
 		switch b.(type) {
 		case TypeVariable:
-			return Unify(&b, &a)
+			return Unify(&b, &a, env)
 		case TypeOperator:
 			aTypeLen := len(a.(TypeOperator).Types)
 			bTypeLen := len(b.(TypeOperator).Types)
 			if a.GetName() != b.GetName() || aTypeLen != bTypeLen{
 				if len(b.(TypeOperator).Types) > 0 {
-					return Unify(&b, &a)
+					return Unify(&b, &a, env)
 				} else if aTypeLen > 0 {
 					if a.(TypeOperator).Types[aTypeLen - 1].GetName() ==
 						b.(TypeOperator).GetName() {
@@ -332,7 +359,7 @@ func Unify(t1 *Type, t2 *Type) error {
 			}
 			// we know that the types must match because they didn't pass into that last condition
 			for i, el := range a.(TypeOperator).Types {
-				Unify(&el, &b.(TypeOperator).Types[i])
+				Unify(&el, &b.(TypeOperator).Types[i], env)
 			}
 			return nil
 		}
@@ -341,7 +368,6 @@ func Unify(t1 *Type, t2 *Type) error {
 }
 
 func Prune(t Type) Type {
-	// TODO: not implemented
 	/*
 	Returns the currently defining instance of t.
 
@@ -358,6 +384,15 @@ func Prune(t Type) Type {
 	Returns:
 		An uninstantiated TypeVariable or a TypeOperator
 	*/
+
+
+	switch t.(type){
+	case TypeVariable:
+		if t.(TypeVariable).Instance != nil {
+			newInstance := Prune(t.(TypeVariable).Instance)
+			return newInstance
+		}
+	}
 	return t
 }
 
@@ -365,7 +400,7 @@ func Fresh(t Type, nonGeneric []Type) Type {
 	/*
 	Makes a copy of a type expression.
 
-	The type t is copied. The the generic variables are duplicated and the
+	The type t is copied. Then the generic variables are duplicated and the
 	non_generic variables are shared.
 
 	Args:

@@ -87,6 +87,7 @@ Compiling currently maps straight to outputting code text, needs more passes:
 - [ ] Linking (Do functions mentioned exist? Do modules?)
 - [ ] Listing and generating of required concretely-typed generic functions
 - Then generating source  
+  - [ ] Last expression in a func needs `return` inserted
 
 
 [ ] 'Module' rule
