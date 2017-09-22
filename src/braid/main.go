@@ -6,6 +6,7 @@ import (
 	"braid/ast"
 	"os"
 	"io/ioutil"
+	"encoding/json"
 )
 
 func Compile(input string) (string, error) {
@@ -46,11 +47,12 @@ func Compile(input string) (string, error) {
 			return "", err
 		}
 
-		fmt.Println(env)
+		output, _ := json.MarshalIndent(env, "", "  ")
+		fmt.Println(string(output))
 
 		// print the compiled Go
 		result := a.Compile(env)
-		fmt.Println(result)
+		//fmt.Println(result)
 		return result, nil
 	}
 
@@ -105,8 +107,8 @@ func main() {
 	}
 
 	file := string(result)
-	compiled, err := Compile(file)
-	if err != nil {
+	compiled, cErr := Compile(file)
+	if cErr != nil {
 		return
 	}
 	fmt.Print(compiled)

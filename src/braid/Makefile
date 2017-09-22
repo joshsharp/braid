@@ -1,15 +1,24 @@
-run: build
-	../../bin/braid
+GOCMD=gb
+GOBUILD=$(GOCMD) build
+GOCLEAN=$(GOCMD) clean
+GOTEST=$(GOCMD) test
+GOGET=$(GOCMD) get
+BINARY_NAME=braid
+
+all: build run
+
+run: grammar build
+	../../bin/braid $(ARG)
 .PHONY: run
 
-build: grammar.go gb
+build:
+	gb build all
 .PHONY: build
 
-grammar.go:
-	../../bin/pigeon ast/braid.peg | goimports > ast/grammar.go
+test:
+	$(GOTEST) -v ./...
 
-gb:
-	gb build all
-.PHONY: gb
+grammar:
+	../../bin/pigeon ast/braid.peg | goimports > ast/grammar.go
 
 

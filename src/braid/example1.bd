@@ -1,0 +1,21 @@
+let add = func a b {
+	a + b
+}
+
+let cheesy = func item item2 {
+    item ++ " and " ++ item2 ++ " with cheese"
+}
+
+let main = func {
+	# one
+	let a = 2
+	# two
+	let b = 3 + -2
+	let c = a + b
+	let d = [5, 6]
+	let e = b
+	let _ = add(4, 5)
+	let pizza = cheesy("pizza")
+	#Mod.f()
+}
+

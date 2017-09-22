@@ -39,6 +39,7 @@ type TypeOperator struct {
 type Function struct {
 	Name string
 	Types []Type
+	Env State
 }
 
 type Type interface {
@@ -239,17 +240,23 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
 			}
 		}
+		fmt.Printf("Expr inferred: %s\n", lastType.GetName())
+		if t, ok := (*env)[lastType.GetName()]; ok {
+			lastType = t
+		}
+
 		return lastType, nil
 
 	case Func:
 		statements := node.(Func).Subvalues
 		var lastType Type
-		var newEnv = env
+		var newEnv = make(State)
+		CopyState(*env, newEnv)
 
 		// init argument names as type variables ready to be filled
 		if len(node.(Func).Arguments) > 0 {
 			for _, el := range node.(Func).Arguments {
-				(*newEnv)[el.(Identifier).StringValue] = NewTypeVariable()
+				newEnv[el.(Identifier).StringValue] = NewTypeVariable()
 			}
 		}
 
@@ -259,7 +266,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			case Comment:
 				continue
 			default:
-				t, err := Infer(s, newEnv, nonGeneric)
+				t, err := Infer(s, &newEnv, nonGeneric)
 				lastType = t
 
 				if err != nil {
@@ -276,12 +283,13 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		// grab inferred types of args
 		if len(node.(Func).Arguments) > 0 {
 			for _, el := range node.(Func).Arguments {
-				fType.Types = append(fType.Types, (*newEnv)[el.(Identifier).StringValue])
+				fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
 			}
 		}
 
 		// now the final type is the return type
 		fType.Types = append(fType.Types, lastType)
+		fType.Env = newEnv
 
 		(*env)[node.(Func).Name] = fType
 		return fType, nil
@@ -324,7 +332,6 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 				return InferenceError{"Recursive unification"}
 			}
 
-			// TODO: need to be able to assign to `a` here
 			newA := a.(TypeVariable)
 			newA.Instance = b
 			fmt.Printf("Unify %s is now %s\n", a.GetName(), b.GetName())
@@ -498,4 +505,10 @@ func IsGeneric(v TypeVariable, nonGeneric []Type) bool {
 	*/
 
 	return !OccursIn(v, nonGeneric)
+}
+
+func CopyState(existing State, copy State) {
+	for k, v := range existing {
+		copy[k] = v
+	}
 }
