@@ -188,7 +188,56 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		return nil, InferenceError{"Do not know the type of function " + node.(Call).Function.(Identifier).StringValue}
 
 	case If:
-		return NewTypeVariable(), nil
+		// TODO: infer condition, make sure matches bool
+		// TODO: don't unify if not used in assignment
+		// TODO: need some way to store type for later use, but If has no name
+
+		statements := node.(If).Then
+		var thenType Type
+		var elseType Type
+
+		// infer all statements
+		for _, s := range statements {
+			switch s.(type) {
+			case Comment:
+				continue
+			default:
+				t, err := Infer(s, env, nonGeneric)
+				thenType = t
+
+				if err != nil {
+					return nil, err
+				} else {
+					fmt.Printf("Infer Then: %s\n", thenType.GetName())
+				}
+			}
+		}
+
+		statements = node.(If).Else
+
+		// infer all statements
+		for _, s := range statements {
+			switch s.(type) {
+			case Comment:
+				continue
+			default:
+				t, err := Infer(s, env, nonGeneric)
+				elseType = t
+
+				if err != nil {
+					return nil, err
+				} else {
+					fmt.Printf("Infer Else: %s\n", elseType.GetName())
+				}
+			}
+		}
+
+		if elseType != nil {
+			Unify(&thenType, &elseType, env)
+			return elseType, nil
+		}
+
+		return thenType, nil
 
 	case Container:
 		// TODO: Do we use this concretely anywhere?
