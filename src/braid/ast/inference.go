@@ -289,6 +289,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 
 		// now the final type is the return type
 		fType.Types = append(fType.Types, lastType)
+		DiffState(*env, newEnv)
 		fType.Env = newEnv
 
 		(*env)[node.(Func).Name] = fType
@@ -510,5 +511,11 @@ func IsGeneric(v TypeVariable, nonGeneric []Type) bool {
 func CopyState(existing State, copy State) {
 	for k, v := range existing {
 		copy[k] = v
+	}
+}
+
+func DiffState(existing State, copy State){
+	for k, _ := range existing {
+		delete(copy, k)
 	}
 }
