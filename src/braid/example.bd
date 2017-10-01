@@ -1,17 +1,16 @@
 # test
 let cheesy = func item item2 {
-	let b = 5.0 +. 6.5
+	let b = 5 + 6 - 1
 	let c = [5, 6, 7]
     # more test
     item ++ " and " ++ item2 ++ " with cheese"
 }
 
 let tester = func a {
+    let c = true
 	let nothing = a + 1
-	if a > 100 {
+	if a > 5 {
 		a + 1
-	} else if a > 5 {
-		a + 50
 	} else {
 		a + 100
 	}

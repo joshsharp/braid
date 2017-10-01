@@ -36,7 +36,7 @@ func Compile(input string) (string, error) {
 
 		// print the ast
 		a := result.(ast.Ast)
-		//fmt.Println("=", a.Print(0))
+		fmt.Println("=", a.Print(0))
 
 		env := make(ast.State)
 

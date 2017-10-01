@@ -557,7 +557,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
 BinOpParens = '(' _ first:BinOp _ ')' {
     //fmt.Println("binopparens", first)
     return Expr{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}}, nil
-} / Value
+} / Call / Value
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
 

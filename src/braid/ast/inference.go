@@ -186,11 +186,37 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			return types[len(types)-1], nil
 		}
 		return nil, InferenceError{"Do not know the type of function " + node.(Call).Function.(Identifier).StringValue}
+	case BinOp:
+		op, err := Infer(node.(BinOp).Operator, env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+
+		left, err := Infer(node.(BinOp).Left, env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		right, err := Infer(node.(BinOp).Right, env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+
+		Unify(&left, &right, env)
+		return op, nil
+
 
 	case If:
-		// TODO: infer condition, make sure matches bool
 		// TODO: don't unify if not used in assignment
 		// TODO: need some way to store type for later use, but If has no name
+
+		condition, err := Infer(node.(If).Condition, env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+
+		if condition.GetType() != Boolean.GetType() {
+			return nil, InferenceError{"Condition must be a boolean"}
+		}
 
 		statements := node.(If).Then
 		var thenType Type

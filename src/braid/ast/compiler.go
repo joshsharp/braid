@@ -153,6 +153,17 @@ func (a If) Compile(state State) string {
 
 }
 
+func (b BinOp) Compile(state State) string {
+	result := ""
+
+	result += b.Left.Compile(state)
+	result += b.Operator.Compile(state)
+	result += b.Right.Compile(state)
+
+	return result
+
+}
+
 func (a Call) Compile(state State) string {
 	result := ""
 	if a.Module != nil {
