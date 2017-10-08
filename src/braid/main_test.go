@@ -7,7 +7,7 @@ import (
 var examples = []string{`
 # test
 let cheesy = func item item2 {
-	let b = 5.0 +. 6.5
+	let b = 5.0 + 6.5
 	let c = [5, 6, 7]
     # more test
     item ++ " and " ++ item2 ++ " with cheese"
@@ -91,21 +91,21 @@ let test = func p {
 
 func TestExample0(t *testing.T){
 
-	result, err := Compile(examples[0])
+	_, err := Compile(examples[0])
 	if err != nil {
 		t.Error(err.Error())
 	}
-	println(result)
+	//println(result)
 
 }
 
 func TestExample1(t *testing.T){
 
-	result, err := Compile(examples[1])
+	_, err := Compile(examples[1])
 	if err != nil {
 		t.Error(err.Error())
 	}
-	println(result)
+	//println(result)
 
 }
 
