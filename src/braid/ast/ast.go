@@ -464,11 +464,10 @@ func (b BinOp) Print(indent int) string {
 	for i := 0; i < indent; i++ {
 		str += "  "
 	}
-	str += "BinOp"
+	str += "BinOp \n"
 
-	str += ":\n"
-	str += b.Operator.Print(indent + 1)
 	str += b.Left.Print(indent + 1)
+	str += b.Operator.Print(indent + 1)
 	str += b.Right.Print(indent + 1)
 
 	return str

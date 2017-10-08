@@ -201,7 +201,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			return nil, err
 		}
 
-		Unify(&left, &right, env)
+		err = Unify(&left, &right, env)
+		if err != nil {
+			return nil, err
+		}
 		return op, nil
 
 
@@ -259,7 +262,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		}
 
 		if elseType != nil {
-			Unify(&thenType, &elseType, env)
+			err = Unify(&thenType, &elseType, env)
+			if err != nil {
+				return nil, err
+			}
 			return elseType, nil
 		}
 

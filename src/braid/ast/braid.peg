@@ -353,7 +353,7 @@ FuncDefn = _ "let" __ i:VariableName _ '=' _ "func" __ ids:(VariableName __)* _ 
     return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues }, nil
 }
 
-Expr = ex:(IfExpr / Call / CompoundExpr) {
+Expr = ex:(IfExpr / Call / BinOp) {
     //fmt.Printf("top-level expr: %s\n", string(c.text))
     //fmt.Println(ex)
     return ex, nil
@@ -477,81 +477,131 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
 BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh / BinOpParens
 
 BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
+
+    subvalues := []Ast{first.(Ast)}
+
     //fmt.Println("binopbool", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
-        subvalues := []Ast{first.(Ast)}
+
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(Ast)
+            e := restExpr[3].(Ast)
             op := restExpr[1].(Ast)
-            subvalues = append(subvalues, op, v)
+            subvalues = append(subvalues, op, e)
         }
-        return Expr{Type: "BinOpBool", Subvalues: subvalues }, nil
-    } else {
-        return first.(Ast), nil
+        //return Expr{Type: "BinOpBool", Subvalues: subvalues }, nil
     }
+
+    for len(subvalues) > 1 {
+        length := len(subvalues)
+        right := subvalues[length-1].(Ast)
+        op := subvalues[length-2].(Operator)
+        left := subvalues[length-3].(Ast)
+        binop := BinOp{Operator: op, Left: left, Right: right}
+        subvalues = append(subvalues[:length-3], binop)
+
+    }
+
+    return subvalues[0].(Ast), nil
+
 }
 
 BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
-    //fmt.Println("binopeq", first, rest)
+    subvalues := []Ast{first.(Ast)}
+
+    //fmt.Println("binopbool", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
-        subvalues := []Ast{first.(Ast)}
+
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(Ast)
+            e := restExpr[3].(Ast)
             op := restExpr[1].(Ast)
-            subvalues = append(subvalues, op, v)
+            subvalues = append(subvalues, op, e)
         }
-        return Expr{Type: "BinOpEquality", Subvalues: subvalues }, nil
-    } else {
-        return first.(Ast), nil
+        //return Expr{Type: "BinOpBool", Subvalues: subvalues }, nil
     }
+
+    for len(subvalues) > 1 {
+        length := len(subvalues)
+        right := subvalues[length-1].(Ast)
+        op := subvalues[length-2].(Operator)
+        left := subvalues[length-3].(Ast)
+        binop := BinOp{Operator: op, Left: left, Right: right}
+        subvalues = append(subvalues[:length-3], binop)
+
+    }
+
+    return subvalues[0].(Ast), nil
 
 }
 
 BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
-    //fmt.Println("binoplow", first, rest)
+    subvalues := []Ast{first.(Ast)}
+
+    //fmt.Println("binopbool", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
-        subvalues := []Ast{first.(Ast)}
+
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(Ast)
+            e := restExpr[3].(Ast)
             op := restExpr[1].(Ast)
-            subvalues = append(subvalues, op, v)
+            subvalues = append(subvalues, op, e)
         }
-        return Expr{Type: "BinOpLow", Subvalues: subvalues }, nil
-    } else {
-        return first.(Ast), nil
+        //return Expr{Type: "BinOpBool", Subvalues: subvalues }, nil
     }
+
+    for len(subvalues) > 1 {
+        length := len(subvalues)
+        right := subvalues[length-1].(Ast)
+        op := subvalues[length-2].(Operator)
+        left := subvalues[length-3].(Ast)
+        binop := BinOp{Operator: op, Left: left, Right: right}
+        subvalues = append(subvalues[:length-3], binop)
+
+    }
+
+    return subvalues[0].(Ast), nil
 
 }
 
 BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
-    //fmt.Println("binophigh", first, rest)
+    subvalues := []Ast{first.(Ast)}
+
+    //fmt.Println("binopbool", first, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
-        subvalues := []Ast{first.(Ast)}
+
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            v := restExpr[3].(Ast)
+            e := restExpr[3].(Ast)
             op := restExpr[1].(Ast)
-            subvalues = append(subvalues, op, v)
+            subvalues = append(subvalues, op, e)
         }
-        return Expr{Type: "BinOpHigh", Subvalues: subvalues}, nil
-    } else {
-        return first.(Ast), nil
+        //return Expr{Type: "BinOpBool", Subvalues: subvalues }, nil
     }
+
+    for len(subvalues) > 1 {
+        length := len(subvalues)
+        right := subvalues[length-1].(Ast)
+        op := subvalues[length-2].(Operator)
+        left := subvalues[length-3].(Ast)
+        binop := BinOp{Operator: op, Left: left, Right: right}
+        subvalues = append(subvalues[:length-3], binop)
+
+    }
+
+    return subvalues[0].(Ast), nil
 }
 
 BinOpParens = '(' _ first:BinOp _ ')' {
@@ -561,7 +611,7 @@ BinOpParens = '(' _ first:BinOp _ ')' {
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
 
-OperatorBoolean = ( "not" / "or" / "and" ) {
+OperatorBoolean = ( "or" / "and" ) {
     return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 
@@ -667,10 +717,11 @@ Const = '-'? [0-9]+ !'.' {
     }
     return BasicAst{Type:"Float", FloatValue:val, ValueType:FLOAT}, nil
 }
-/ "true" / "false" {
-    if string(c.text) == "true" {
-        return BasicAst{Type:"Bool", BoolValue: true, ValueType:BOOL}, nil
-    }
+/ "true" {
+    return BasicAst{Type:"Bool", BoolValue: true, ValueType:BOOL}, nil
+
+}
+/ "false" {
     return BasicAst{Type:"Bool", BoolValue: false, ValueType:BOOL}, nil
 }
 / Unit
