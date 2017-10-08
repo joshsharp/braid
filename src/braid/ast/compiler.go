@@ -177,7 +177,7 @@ func (a Call) Compile(state State) string {
 		}
 		result += strings.Join(args, ", ")
 	}
-	result += ")\n"
+	result += ")"
 
 	return result
 }

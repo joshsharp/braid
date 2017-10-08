@@ -210,7 +210,7 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
 
 TopLevelStatement = Comment / FuncDefn / TypeDefn
 
-Statement = Comment / FuncDefn / Assignment / Call / ExprLine
+Statement = Comment / FuncDefn / Assignment / ExprLine
 
 ExprLine = e:Expr &'\n' {
     return e, nil
@@ -323,7 +323,7 @@ Assignment = _ "let" __ i:Assignable _ '=' _ expr:Expr _ {
 }
 /
 _ "let" __ !Assignable {
-    return nil, errors.New("Variable name or '_' (unused result character) required here")
+    return nil, errors.New("Variable name or '_' (unused result) required here")
 }
 /
 _ "let" __ i:Assignable _ !'=' {
@@ -353,13 +353,13 @@ FuncDefn = _ "let" __ i:VariableName _ '=' _ "func" __ ids:(VariableName __)* _ 
     return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues }, nil
 }
 
-Expr = ex:(IfExpr / Call / BinOp) {
+Expr = ex:(IfExpr / BinOp / Call) {
     //fmt.Printf("top-level expr: %s\n", string(c.text))
     //fmt.Println(ex)
     return ex, nil
 }
 
-IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ elseifs:IfExpr {
+IfExpr = _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ elseifs:IfExpr {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -371,7 +371,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues, Else: []Ast{elseifs.(Ast)} }, nil
 }
 /
-"if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ elses:(Statement)+ __ '}' {
+_ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ elses:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -390,7 +390,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues, Else: elsevalues }, nil
 }
 /
-"if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
+_ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -402,7 +402,7 @@ IfExpr = "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ else
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
+Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -416,7 +416,7 @@ Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
     return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: arguments }, nil
 }
 /
-_ fn:VariableName args:Arguments _ {
+fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -429,6 +429,14 @@ _ fn:VariableName args:Arguments _ {
 
     return Call{Module: nil, Function: fn.(Ast), Arguments: arguments }, nil
 }
+/
+fn:VariableName "()" {
+    //fmt.Println("call", string(c.text))
+    arguments := []Ast{}
+
+    return Call{Module: nil, Function: fn.(Ast), Arguments: arguments }, nil
+}
+
 
 Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
     args := []Ast{argument.(Ast)}
@@ -451,8 +459,6 @@ Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
     args := []Ast{argument.(Ast)}
     return Container{Type: "Arguments", Subvalues: args}, nil
 }
-/
-Unit
 
 CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
     //fmt.Println("compound", op, rest)
@@ -604,10 +610,10 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
     return subvalues[0].(Ast), nil
 }
 
-BinOpParens = '(' _ first:BinOp _ ')' {
+BinOpParens = _ '(' _ first:BinOp _ ')' {
     //fmt.Println("binopparens", first)
     return Expr{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}}, nil
-} / Call / Value
+} / Value
 
 Operator = OperatorBoolean / OperatorEquality / OperatorHigh / OperatorLow
 
@@ -633,7 +639,7 @@ OperatorLow = ( "+" / "-" ) {
     return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
 }
 
-Value = VariableName / Const
+Value = Call / VariableName / Const
 
 Assignable = VariableName / Unused
 
