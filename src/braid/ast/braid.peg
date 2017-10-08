@@ -619,21 +619,18 @@ OperatorEquality = ( ">=" / "<=" / '<' / '>' / "===" / "=="){
     return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 
-OperatorHigh = ( "/." / "*." ) {
-    return Operator{StringValue:string(c.text), ValueType:FLOAT}, nil
+OperatorHigh = ( "/" / "*" ) {
+    return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
 }
-/ ( '*' / '/' / '^' ) {
+/ ( '^' ) {
     return Operator{StringValue:string(c.text), ValueType:INT}, nil
 }
 / "++" {
     return Operator{StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-OperatorLow = ( "+." / "-." ) {
-    return Operator{StringValue:string(c.text), ValueType:FLOAT}, nil
-}
-/ ( '+' / '-' ) {
-    return Operator{StringValue:string(c.text), ValueType:INT}, nil
+OperatorLow = ( "+" / "-" ) {
+    return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
 }
 
 Value = VariableName / Const

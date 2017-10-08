@@ -7,9 +7,10 @@ import (
 var (
 	nextId int  = 0
 	nextVarName = "'a"
-	Integer = TypeOperator{"int",[]Type{}}
 	Boolean = TypeOperator{"bool",[]Type{}}
+	Integer = TypeOperator{"int",[]Type{}}
 	Float = TypeOperator{"float",[]Type{}}
+	Number = TypeOperator{"number",[]Type{Float,Integer}}
 	String = TypeOperator{"string",[]Type{}}
 	Rune = TypeOperator{"rune",[]Type{}}
 	List = TypeOperator{"list",[]Type{}}
@@ -155,6 +156,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			return Integer, nil
 		case FLOAT:
 			return Float, nil
+		case NUMBER:
+			return Number, nil
 		case BOOL:
 			return Boolean, nil
 		case STRING:
@@ -205,6 +208,13 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// number is a convenience for how go handles ops with floats and ints
+		// if we see it, be more specific by using the left type
+		if op.GetType() == Number.GetType(){
+			return left, nil
+		}
+
 		return op, nil
 
 
@@ -448,7 +458,10 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			}
 			// we know that the types must match because they didn't pass into that last condition
 			for i, el := range a.(TypeOperator).Types {
-				Unify(&el, &b.(TypeOperator).Types[i], env)
+				err := Unify(&el, &b.(TypeOperator).Types[i], env)
+				if err != nil {
+					return err
+				}
 			}
 			return nil
 		}

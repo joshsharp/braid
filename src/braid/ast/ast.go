@@ -10,6 +10,7 @@ const (
 	STRING = iota
 	INT
 	FLOAT
+	NUMBER
 	BOOL
 	CHAR
 	NIL
