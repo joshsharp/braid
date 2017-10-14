@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strings"
 )
 
 type ValueType int
@@ -22,18 +23,20 @@ type Module struct {
 }
 
 type BasicAst struct {
-	Type        string
-	StringValue string
-	CharValue   rune
-	BoolValue   bool
-	IntValue    int
-	FloatValue  float64
-	ValueType   ValueType
+	Type         string
+	StringValue  string
+	CharValue    rune
+	BoolValue    bool
+	IntValue     int
+	FloatValue   float64
+	ValueType    ValueType
+	InferredType Type
 }
 
 type Operator struct {
-	StringValue string
-	ValueType   ValueType
+	StringValue  string
+	ValueType    ValueType
+	InferredType Type
 }
 
 type Comment struct {
@@ -41,39 +44,46 @@ type Comment struct {
 }
 
 type Identifier struct {
-	StringValue string
+	StringValue  string
+	InferredType Type
 }
 
 type Expr struct {
-	Type      string
-	Subvalues []Ast
+	Type         string
+	Subvalues    []Ast
+	InferredType Type
 }
 
 type BinOp struct {
-	Operator Operator
-	Left     Ast
-	Right    Ast
+	Operator     Ast
+	Left         Ast
+	Right        Ast
+	InferredType Type
 }
 
 type Container struct {
-	Type      string
-	Subvalues []Ast
+	Type         string
+	Subvalues    []Ast
+	InferredType Type
 }
 
 type ArrayType struct {
-	Subvalues []Ast
+	Subvalues    []Ast
+	InferredType Type
 }
 
 type Func struct {
-	Name      string
-	Arguments []Ast
-	Subvalues []Ast
+	Name         string
+	Arguments    []Ast
+	Subvalues    []Ast
+	InferredType Type
 }
 
 type Call struct {
-	Module    Ast
-	Function  Ast
-	Arguments []Ast
+	Module       Ast
+	Function     Ast
+	Arguments    []Ast
+	InferredType Type
 }
 
 type VariantInstance struct {
@@ -87,14 +97,16 @@ type RecordInstance struct {
 }
 
 type If struct {
-	Condition Ast
-	Then      []Ast
-	Else      []Ast
+	Condition    Ast
+	Then         []Ast
+	Else         []Ast
+	InferredType Type
 }
 
 type Assignment struct {
-	Left  Ast
-	Right Ast
+	Left         Ast
+	Right        Ast
+	InferredType Type
 }
 
 type RecordType struct {
@@ -129,6 +141,7 @@ type Ast interface {
 	String() string
 	Print(indent int) string
 	Compile(state State) string
+	GetInferredType() Type
 }
 
 func (a BasicAst) String() string {
@@ -156,9 +169,132 @@ func (a BasicAst) String() string {
 	return "()"
 }
 
+func (o Operator) SetInferredType(t Type) {
+	o.InferredType = t
+}
+
+
+func (c Container) SetInferredType(t Type) {
+	c.InferredType = t
+}
+
+func (m Module) SetInferredType(t Type) {
+
+}
+
+func (c Call) SetInferredType(t Type) {
+	c.InferredType = t
+}
+
+func (e Expr) SetInferredType(t Type) {
+	e.InferredType = t
+}
+
+func (b BinOp) SetInferredType(t Type) {
+	b.InferredType = t
+}
+
+func (a Assignment) SetInferredType(t Type) {
+	a.InferredType = t
+}
+
+func (c Comment) SetInferredType(t Type) {
+
+}
+
+func (i Identifier) SetInferredType(t Type) {
+	i.InferredType = t
+}
+
+func (r RecordType) SetInferredType(t Type) {
+
+}
+
+func (v VariantType) SetInferredType(t Type) {
+
+}
+
+func (a ArrayType) SetInferredType(t Type) {
+	a.InferredType = t
+}
+
+func (a BasicAst) SetInferredType(t Type) {
+	a.InferredType = t
+}
+
+func (f Func) SetInferredType(t Type) {
+	f.InferredType = t
+}
+
+func (f If) SetInferredType(t Type) {
+	f.InferredType = t
+}
+
+func (o Operator) GetInferredType() Type {
+	return o.InferredType
+}
+
+func (c Container) GetInferredType() Type {
+	return c.InferredType
+}
+
+func (m Module) GetInferredType() Type {
+	return Unit
+}
+
+func (c Call) GetInferredType() Type {
+	return c.InferredType
+}
+
+func (e Expr) GetInferredType() Type {
+	return e.InferredType
+}
+
+func (b BinOp) GetInferredType() Type {
+	return b.InferredType
+}
+
+func (a Assignment) GetInferredType() Type {
+	return a.InferredType
+}
+
+func (c Comment) GetInferredType() Type {
+	return Unit
+}
+
+func (i Identifier) GetInferredType() Type {
+	return i.InferredType
+}
+
+func (r RecordType) GetInferredType() Type {
+	return Unit
+}
+
+func (v VariantType) GetInferredType() Type {
+	return Unit
+}
+
+func (a ArrayType) GetInferredType() Type {
+	return a.InferredType
+}
+
+func (a BasicAst) GetInferredType() Type {
+	return a.InferredType
+}
+
+func (f Func) GetInferredType() Type {
+	return f.InferredType
+}
+
+func (f If) GetInferredType() Type {
+	return f.InferredType
+}
+
+
 func (o Operator) String() string {
 	return o.StringValue
 }
+
 
 func (c Container) String() string {
 	values := ""
@@ -217,11 +353,13 @@ func (v VariantType) String() string {
 }
 
 func (a ArrayType) String() string {
-	values := ""
+	values := []string{}
+
+
 	for _, el := range a.Subvalues {
-		values += fmt.Sprint(el)
+		values = append(values, fmt.Sprint(el))
 	}
-	return values
+	return "[" + strings.Join(values, ", ") + "]"
 }
 
 func (m Module) Print(indent int) string {
@@ -263,15 +401,13 @@ func (c Expr) Print(indent int) string {
 	return str
 }
 
-
-
 func (a ArrayType) Print(indent int) string {
 	str := ""
 
 	for i := 0; i < indent; i++ {
 		str += "  "
 	}
-	str += "Array: \n"
+	str += fmt.Sprintf("Array: %s\n", a.InferredType)
 	for _, el := range a.Subvalues {
 		str += el.Print(indent + 1)
 	}
@@ -343,6 +479,7 @@ func (a Func) Print(indent int) string {
 		}
 		str += ")"
 	}
+	str += fmt.Sprint(a.InferredType)
 	str += "\n"
 	for _, el := range (a.Subvalues) {
 		str += el.Print(indent + 1)

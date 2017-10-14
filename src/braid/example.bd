@@ -20,7 +20,7 @@ let main = func {
 	let something = func {
 		4 + 9
 	}
-	let a = 5.0 *. (4.0 +. 6.0) *. 2.0
+	let a = 5.0 * (4.0 + 6.0) * 2.0
 	let yumPizza = cheesy("pineapple", ("bbq" ++ "sauce"))
 	# hoo boy this is a good'un
 	let five = 1 / 1 + 3 * (55 - 2)

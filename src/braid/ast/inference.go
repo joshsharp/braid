@@ -5,17 +5,16 @@ import (
 )
 
 var (
-	nextId int  = 0
-	nextVarName = "'a"
-	Boolean = TypeOperator{"bool",[]Type{}}
-	Integer = TypeOperator{"int",[]Type{}}
-	Float = TypeOperator{"float",[]Type{}}
-	Number = TypeOperator{"number",[]Type{Float,Integer}}
-	String = TypeOperator{"string",[]Type{}}
-	Rune = TypeOperator{"rune",[]Type{}}
-	List = TypeOperator{"list",[]Type{}}
-	Unit = TypeOperator{"()",[]Type{}}
-
+	nextId      int = 0
+	nextVarName     = "'a"
+	Boolean         = TypeOperator{"bool", []Type{}}
+	Integer         = TypeOperator{"int", []Type{}}
+	Float           = TypeOperator{"float", []Type{}}
+	Number          = TypeOperator{"number", []Type{Float, Integer}}
+	String          = TypeOperator{"string", []Type{}}
+	Rune            = TypeOperator{"rune", []Type{}}
+	List            = TypeOperator{"list", []Type{}}
+	Unit            = TypeOperator{"()", []Type{}}
 )
 
 type InferenceError struct {
@@ -33,14 +32,14 @@ type TypeVariable struct {
 }
 
 type TypeOperator struct {
-	Name string
+	Name  string
 	Types []Type
 }
 
 type Function struct {
-	Name string
+	Name  string
 	Types []Type
-	Env State
+	Env   State
 }
 
 type Type interface {
@@ -94,165 +93,249 @@ func NewTypeVariable() TypeVariable {
 	return t
 }
 
-func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
+func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	/*
-	Computes the type of the expression given by node.
+		Computes the type of the expression given by node.
 
-	The type of the node is computed in the context of the context of the
-	supplied type environment env. Data types can be introduced into the
-	language simply by having a predefined set of identifiers in the initial
-	environment; this way there is no need to change the syntax or, more
-	importantly, the type-checking program when extending the language.
+		The type of the node is computed in the context of the context of the
+		supplied type environment env. Data types can be introduced into the
+		language simply by having a predefined set of identifiers in the initial
+		environment; this way there is no need to change the syntax or, more
+		importantly, the type-checking program when extending the language.
 
-	Args:
-		node: The root of the abstract syntax tree.
-		env: The type environment is a mapping of expression identifier names
-			to type assignments.
-			to type assignments.
-		non_generic: A set of non-generic variables, or None
+		Args:
+			node: The root of the abstract syntax tree.
+			env: The type environment is a mapping of expression identifier names
+				to type assignments.
+				to type assignments.
+			non_generic: A set of non-generic variables, or None
 
-	Returns:
-		The computed type of the expression.
+		Returns:
+			The computed type of the expression.
 	*/
-	switch node.(type){
+
+
+	switch node.(type) {
 
 	case Module:
-		statements := node.(Module).Subvalues
+		node := node.(Module)
+		statements := node.Subvalues
+
+		newStatements := []Ast{}
+
 		for _, s := range statements {
 			switch s.(type) {
 			case Comment:
 				continue
 			default:
+				//fmt.Printf("Encountered %s\n", s.String())
 				t, err := Infer(s, env, nonGeneric)
 				if err != nil {
 					return nil, err
 				} else {
-					fmt.Printf("Infer %s: %s %s\n", s.String(), t.GetName(), t.GetType())
+					newStatements = append(newStatements, t)
+					//fmt.Printf("Module infer %s: %s\n", s.String(), t.GetInferredType())
 				}
 			}
-
 		}
-		return Unit, nil
+		node.Subvalues = newStatements
+		for _, s := range node.Subvalues {
+
+			fmt.Printf("Module infer %s: %s\n", s.String(), s.GetInferredType())
+		}
+
+		//node.InferredType = Unit
+		return node, nil
 
 	case BasicAst:
-		switch node.(BasicAst).ValueType {
+		node := node.(BasicAst)
+		switch node.ValueType {
 		case CHAR:
-			return Rune, nil
+			node.InferredType = Rune
+			return node, nil
 		case INT:
-			return Integer, nil
+			node.InferredType = Integer
+			return node, nil
 		case FLOAT:
-			return Float, nil
+			node.InferredType = Float
+			return node, nil
 		case BOOL:
-			return Boolean, nil
+			node.InferredType = Boolean
+			return node, nil
 		case STRING:
-			return String, nil
+			node.InferredType = String
+			return node, nil
 		}
 
 	case Operator:
-		switch node.(Operator).ValueType {
-		case CHAR:
-			return Rune, nil
-		case INT:
-			return Integer, nil
-		case FLOAT:
-			return Float, nil
+		node := node.(Operator)
+		switch node.ValueType {
 		case NUMBER:
-			return Number, nil
+			node.InferredType = Number
+			return node, nil
+		case CHAR:
+			node.InferredType = Rune
+			return node, nil
+		case INT:
+			node.InferredType = Integer
+			return node, nil
+		case FLOAT:
+			node.InferredType = Float
+			return node, nil
 		case BOOL:
-			return Boolean, nil
+			node.InferredType = Boolean
+			return node, nil
 		case STRING:
-			return String, nil
+			node.InferredType = String
+			return node, nil
 		}
 
 	case Comment:
-		return Unit, nil
+		node := node.(Comment)
+		//node.InferredType = Unit
+		return node, nil
 
 	case Assignment:
-		rightSide, err := Infer(node.(Assignment).Right, env, nonGeneric)
+		node := node.(Assignment)
+		right := node.Right
+		//fmt.Printf("Encountered %s\n", right.String())
+		rightSide, err := Infer(right, env, nonGeneric)
 		if err != nil {
 			return nil, err
 		}
-		if node.(Assignment).Left.(Identifier).StringValue != "_" {
-			(*env)[node.(Assignment).Left.(Identifier).StringValue] = rightSide
+
+		///fmt.Println("right side type:", rightSide.GetInferredType())
+		if node.Left.(Identifier).StringValue != "_" {
+			name := node.Left.(Identifier).StringValue
+			(*env)[name] = rightSide.GetInferredType()
+
 		}
-		return rightSide, nil
+
+		left := Identifier{StringValue: node.Left.(Identifier).StringValue,
+			InferredType:rightSide.GetInferredType()}
+
+		// check in case this is a typevar already stored
+		if t, ok := (*env)[rightSide.GetInferredType().GetName()]; ok {
+			(*env)[left.StringValue] = t
+			left.InferredType = t
+		}
+
+		node.Right = rightSide
+		node.Left = left
+		node.InferredType = left.GetInferredType()
+
+		return node, nil
 
 	case Identifier:
-		if node.(Identifier).StringValue == "_" {
-			return NewTypeVariable(), nil
+		node := node.(Identifier)
+		if node.StringValue == "_" {
+			node.InferredType = NewTypeVariable()
+			return node, nil
 		}
-		return GetType(node.(Identifier).StringValue, *env, nonGeneric)
+		t, err := GetType(node.StringValue, *env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		node.InferredType = t
+		return node, nil
 
 	case Call:
-		if (*env)[node.(Call).Function.(Identifier).StringValue] != nil {
-			types := (*env)[node.(Call).Function.(Identifier).StringValue].(Function).Types
-			return types[len(types)-1], nil
+		node := node.(Call)
+		if (*env)[node.Function.(Identifier).StringValue] != nil {
+			types := (*env)[node.Function.(Identifier).StringValue].(Function).Types
+			node.InferredType = types[len(types)-1]
+			return node, nil
 		}
-		return nil, InferenceError{"Do not know the type of function " + node.(Call).Function.(Identifier).StringValue}
+		return nil, InferenceError{"Do not know the type of function " + node.Function.(Identifier).StringValue}
 	case BinOp:
-		op, err := Infer(node.(BinOp).Operator, env, nonGeneric)
+		//fmt.Printf("Encountered %s\n", node.String())
+		node := node.(BinOp)
+		operator := node.Operator
+		op, err := Infer(operator, env, nonGeneric)
+		//fmt.Printf("Encountered %s\n", op.String())
 		if err != nil {
 			return nil, err
 		}
 
-		left, err := Infer(node.(BinOp).Left, env, nonGeneric)
-		if err != nil {
-			return nil, err
-		}
-		right, err := Infer(node.(BinOp).Right, env, nonGeneric)
+		l := node.Left
+
+		left, err := Infer(l, env, nonGeneric)
+
 		if err != nil {
 			return nil, err
 		}
 
-		err = Unify(&left, &right, env)
+		r := node.Right
+		right, err := Infer(r, env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+
+		node.Left = left
+		node.Right = right
+		node.Operator = op
+		lType := left.GetInferredType()
+		rType := right.GetInferredType()
+		err = Unify(&lType, &rType, env)
 		if err != nil {
 			return nil, err
 		}
 
 		// number is a convenience for how go handles ops with floats and ints
 		// if we see it, be more specific by using the left type
-		if op.GetType() == Number.GetType(){
-			return left, nil
+		if op.GetInferredType().GetName() == Number.GetName() {
+			node.InferredType = lType
+			// TODO: we need to update any of these if they're typevars that don't know
+			// that they've been unified
+		} else {
+			node.InferredType = op.GetInferredType()
 		}
 
-		return op, nil
-
+		return node, nil
 
 	case If:
 		// TODO: don't unify if not used in assignment
-		// TODO: need some way to store type for later use, but If has no name
+		node := node.(If)
 
-		condition, err := Infer(node.(If).Condition, env, nonGeneric)
+		ifAst := node.Condition
+		condition, err := Infer(ifAst, env, nonGeneric)
 		if err != nil {
 			return nil, err
 		}
 
-		if condition.GetType() != Boolean.GetType() {
+		if condition.GetInferredType().GetType() != Boolean.GetType() {
 			return nil, InferenceError{"Condition must be a boolean"}
 		}
 
-		statements := node.(If).Then
+		statements := node.Then
 		var thenType Type
 		var elseType Type
 
 		// infer all statements
+		newStatements := []Ast{}
+
 		for _, s := range statements {
 			switch s.(type) {
 			case Comment:
 				continue
 			default:
+
 				t, err := Infer(s, env, nonGeneric)
-				thenType = t
+				thenType = t.GetInferredType()
 
 				if err != nil {
 					return nil, err
 				} else {
-					fmt.Printf("Infer Then: %s\n", thenType.GetName())
+					newStatements = append(newStatements, t)
+					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
 				}
 			}
 		}
 
-		statements = node.(If).Else
+		node.Then = newStatements
+
+		statements = node.Else
+		newStatements = []Ast{}
 
 		// infer all statements
 		for _, s := range statements {
@@ -261,45 +344,58 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				continue
 			default:
 				t, err := Infer(s, env, nonGeneric)
-				elseType = t
+				elseType = t.GetInferredType()
 
 				if err != nil {
 					return nil, err
 				} else {
-					fmt.Printf("Infer Else: %s\n", elseType.GetName())
+					newStatements = append(newStatements, t)
+					//fmt.Printf("Infer Else: %s\n", elseType.GetName())
 				}
 			}
 		}
+
+		node.Else = newStatements
 
 		if elseType != nil {
 			err = Unify(&thenType, &elseType, env)
 			if err != nil {
 				return nil, err
 			}
-			return elseType, nil
+			node.InferredType = elseType
+
+		} else {
+			node.InferredType = thenType
 		}
 
-		return thenType, nil
+		return node, nil
 
 	case Container:
 		// TODO: Do we use this concretely anywhere?
-		return List, nil
+		//node.InferredType = List
+		return node, nil
 
 	case ArrayType:
-
+		node := node.(ArrayType)
 		var lastType Type
-		for _, s := range node.(ArrayType).Subvalues {
+		newValues := []Ast{}
+
+		for _, s := range node.Subvalues {
 			t, err := Infer(s, env, nonGeneric)
+			tType := t.GetInferredType()
+
 			if err != nil {
 				return nil, err
 			}
 			if lastType != nil {
-				err := Unify(&t, &lastType, env)
+
+				err := Unify(&tType, &lastType, env)
 				if err != nil {
 					return nil, err
 				}
 			}
-			lastType = t
+			lastType = tType
+			newValues = append(newValues, t)
 
 			if err != nil {
 				fmt.Println(err.Error())
@@ -308,45 +404,57 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
 			}
 		}
-		return lastType, nil
+		node.Subvalues = newValues
+		node.InferredType = lastType
+
+		return node, nil
 
 	case Expr:
+		node := node.(Expr)
 		var lastType Type
-		for _, s := range node.(Expr).Subvalues {
+		newValues := []Ast{}
+
+		for _, s := range node.Subvalues {
+			//fmt.Printf("Encountered %s\n", s.String())
 			t, err := Infer(s, env, nonGeneric)
+			tType := t.GetInferredType()
+
 			if err != nil {
 				return nil, err
 			}
 			if lastType != nil {
-				err := Unify(&t, &lastType, env)
+
+				err := Unify(&tType, &lastType, env)
 				if err != nil {
 					return nil, err
 				}
 			}
-			lastType = t
+			lastType = tType
+			newValues = append(newValues, t)
 
-			if err != nil {
-				return nil, err
-			} else {
-				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
-			}
+			//fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+
 		}
-		fmt.Printf("Expr inferred: %s\n", lastType.GetName())
+		node.Subvalues = newValues
+		// why are we updating the type from the env here?
 		if t, ok := (*env)[lastType.GetName()]; ok {
 			lastType = t
 		}
-
-		return lastType, nil
+		node.InferredType = lastType
+		return node, nil
 
 	case Func:
-		statements := node.(Func).Subvalues
+		node := node.(Func)
+		statements := node.Subvalues
+		newStatements := []Ast{}
 		var lastType Type
 		var newEnv = make(State)
 		CopyState(*env, newEnv)
 
-		// init argument names as type variables ready to be filled
-		if len(node.(Func).Arguments) > 0 {
-			for _, el := range node.(Func).Arguments {
+		// init
+		// argument names as type variables ready to be filled
+		if len(node.Arguments) > 0 {
+			for _, el := range node.Arguments {
 				newEnv[el.(Identifier).StringValue] = NewTypeVariable()
 			}
 		}
@@ -357,23 +465,27 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 			case Comment:
 				continue
 			default:
+				//fmt.Printf("Encountered %s\n", s.String())
 				t, err := Infer(s, &newEnv, nonGeneric)
-				lastType = t
 
 				if err != nil {
 					return nil, err
 				} else {
-					fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+					lastType = t.GetInferredType()
+					newStatements = append(newStatements, t)
+					fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
 				}
 			}
 		}
 
+		node.Subvalues = newStatements
+
 		// make our function type
-		fType := Function{Name: node.(Func).Name, Types: []Type{}}
+		fType := Function{Name: node.Name, Types: []Type{}}
 
 		// grab inferred types of args
-		if len(node.(Func).Arguments) > 0 {
-			for _, el := range node.(Func).Arguments {
+		if len(node.Arguments) > 0 {
+			for _, el := range node.Arguments {
 				fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
 			}
 		}
@@ -383,8 +495,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Type, error) {
 		DiffState(*env, newEnv)
 		fType.Env = newEnv
 
-		(*env)[node.(Func).Name] = fType
-		return fType, nil
+		(*env)[node.Name] = fType
+		node.InferredType = fType
+		return node, nil
 
 	default:
 		panic("Don't know this type: " + node.String())
@@ -411,16 +524,16 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 
 	Returns:
 		An error if the types cannot be unified.
-    */
+	*/
 	a := Prune(*t1)
 	b := Prune(*t2)
 
 	//fmt.Println("Unify", *t1, *t2)
 
-	switch a.(type){
+	switch a.(type) {
 	case TypeVariable:
-		if a.(TypeVariable).GetName() != b.GetName(){
-			if OccursInType(a.(TypeVariable), b){
+		if a.(TypeVariable).GetName() != b.GetName() {
+			if OccursInType(a.(TypeVariable), b) {
 				return InferenceError{"Recursive unification"}
 			}
 
@@ -431,7 +544,7 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 
 			// try updating other refs to this typevariable
 			for k, v := range *env {
-				if v.GetName() == a.GetName(){
+				if v.GetName() == a.GetName() {
 					(*env)[k] = b
 				}
 			}
@@ -445,11 +558,11 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 		case TypeOperator:
 			aTypeLen := len(a.(TypeOperator).Types)
 			bTypeLen := len(b.(TypeOperator).Types)
-			if a.GetName() != b.GetName() || aTypeLen != bTypeLen{
+			if a.GetName() != b.GetName() || aTypeLen != bTypeLen {
 				if len(b.(TypeOperator).Types) > 0 {
 					return Unify(&b, &a, env)
 				} else if aTypeLen > 0 {
-					if a.(TypeOperator).Types[aTypeLen - 1].GetName() ==
+					if a.(TypeOperator).Types[aTypeLen-1].GetName() ==
 						b.(TypeOperator).GetName() {
 						return nil
 					}
@@ -466,29 +579,28 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			return nil
 		}
 	}
-	return InferenceError{fmt.Sprintf("Types not unified: %s and %s", a.GetName(), b.GetName())}
+	return InferenceError{fmt.Sprintf("Types not unified: %s and %s", a, b)}
 }
 
 func Prune(t Type) Type {
 	/*
-	Returns the currently defining instance of t.
+		Returns the currently defining instance of t.
 
-	As a side effect, collapses the list of type instances. The function Prune
-	is used whenever a type expression has to be inspected: it will always
-	return a type expression which is either an uninstantiated type variable or
-	a type operator; i.e. it will skip instantiated variables, and will
-	actually prune them from expressions to remove long chains of instantiated
-	variables.
+		As a side effect, collapses the list of type instances. The function Prune
+		is used whenever a type expression has to be inspected: it will always
+		return a type expression which is either an uninstantiated type variable or
+		a type operator; i.e. it will skip instantiated variables, and will
+		actually prune them from expressions to remove long chains of instantiated
+		variables.
 
-	Args:
-		t: The type to be pruned
+		Args:
+			t: The type to be pruned
 
-	Returns:
-		An uninstantiated TypeVariable or a TypeOperator
+		Returns:
+			An uninstantiated TypeVariable or a TypeOperator
 	*/
 
-
-	switch t.(type){
+	switch t.(type) {
 	case TypeVariable:
 		if t.(TypeVariable).Instance != nil {
 			newInstance := Prune(t.(TypeVariable).Instance)
@@ -500,14 +612,14 @@ func Prune(t Type) Type {
 
 func Fresh(t Type, nonGeneric []Type) Type {
 	/*
-	Makes a copy of a type expression.
+		Makes a copy of a type expression.
 
-	The type t is copied. Then the generic variables are duplicated and the
-	non_generic variables are shared.
+		The type t is copied. Then the generic variables are duplicated and the
+		non_generic variables are shared.
 
-	Args:
-		t: A type to be copied.
-		non_generic: A set of non-generic TypeVariables
+		Args:
+			t: A type to be copied.
+			non_generic: A set of non-generic TypeVariables
 	*/
 
 	return freshRec(t, nonGeneric, make(map[TypeVariable]TypeVariable))
@@ -515,9 +627,9 @@ func Fresh(t Type, nonGeneric []Type) Type {
 
 func freshRec(tp Type, nonGeneric []Type, mappings map[TypeVariable]TypeVariable) Type {
 	p := Prune(tp)
-	switch p.(type){
+	switch p.(type) {
 	case TypeVariable:
-		if IsGeneric(p.(TypeVariable), nonGeneric){
+		if IsGeneric(p.(TypeVariable), nonGeneric) {
 			if _, ok := mappings[p.(TypeVariable)]; !ok {
 				mappings[p.(TypeVariable)] = NewTypeVariable()
 			}
@@ -525,7 +637,7 @@ func freshRec(tp Type, nonGeneric []Type, mappings map[TypeVariable]TypeVariable
 			return p
 		}
 	case TypeOperator:
-		freshTypes := make([]Type,0)
+		freshTypes := make([]Type, 0)
 		for _, el := range tp.(TypeOperator).Types {
 			freshTypes = append(freshTypes, freshRec(el, nonGeneric, mappings))
 		}
@@ -536,25 +648,25 @@ func freshRec(tp Type, nonGeneric []Type, mappings map[TypeVariable]TypeVariable
 	return tp
 }
 
-func OccursInType(v TypeVariable, type2 Type) bool{
+func OccursInType(v TypeVariable, type2 Type) bool {
 	/*
-	Checks whether a type variable occurs in a type expression.
+		Checks whether a type variable occurs in a type expression.
 
-	Note: Must be called with v pre-pruned
+		Note: Must be called with v pre-pruned
 
-	Args:
-		v:  The TypeVariable to be tested for
-		type2: The type in which to search
+		Args:
+			v:  The TypeVariable to be tested for
+			type2: The type in which to search
 
-	Returns:
-		True if v occurs in type2, otherwise False
- 	*/
+		Returns:
+			True if v occurs in type2, otherwise False
+	*/
 	prunedT2 := Prune(type2)
 
 	if prunedT2.GetName() == v.GetName() {
 		return true
 	}
-	switch prunedT2.(type){
+	switch prunedT2.(type) {
 	case TypeOperator:
 		return OccursIn(v, prunedT2.(TypeOperator).Types)
 	}
@@ -564,14 +676,14 @@ func OccursInType(v TypeVariable, type2 Type) bool{
 
 func OccursIn(v TypeVariable, types []Type) bool {
 	/*
-	Checks whether a types variable occurs in any other types.
+		Checks whether a types variable occurs in any other types.
 
-	Args:
-		t:  The TypeVariable to be tested for
-		types: The sequence of types in which to search
+		Args:
+			t:  The TypeVariable to be tested for
+			types: The sequence of types in which to search
 
-	Returns:
-		True if t occurs in any of types, otherwise False
+		Returns:
+			True if t occurs in any of types, otherwise False
 	*/
 	for _, el := range types {
 		if OccursInType(v, el) {
@@ -583,20 +695,20 @@ func OccursIn(v TypeVariable, types []Type) bool {
 
 func IsGeneric(v TypeVariable, nonGeneric []Type) bool {
 	/*
-	Checks whether a given variable occurs in a list of non-generic variables
+		Checks whether a given variable occurs in a list of non-generic variables
 
-	Note that a variables in such a list may be instantiated to a type term,
-	in which case the variables contained in the type term are considered
-	non-generic.
+		Note that a variables in such a list may be instantiated to a type term,
+		in which case the variables contained in the type term are considered
+		non-generic.
 
-	Note: Must be called with v pre-pruned
+		Note: Must be called with v pre-pruned
 
-	Args:
-	v: The TypeVariable to be tested for genericity
-	non_generic: A set of non-generic TypeVariables
+		Args:
+		v: The TypeVariable to be tested for genericity
+		non_generic: A set of non-generic TypeVariables
 
-	Returns:
-	True if v is a generic variable, otherwise False
+		Returns:
+		True if v is a generic variable, otherwise False
 	*/
 
 	return !OccursIn(v, nonGeneric)
@@ -608,7 +720,7 @@ func CopyState(existing State, copy State) {
 	}
 }
 
-func DiffState(existing State, copy State){
+func DiffState(existing State, copy State) {
 	for k, _ := range existing {
 		delete(copy, k)
 	}

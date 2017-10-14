@@ -84,7 +84,10 @@ Also need to work out exporting/header files/signatures and how this will map to
 Compiling currently maps straight to outputting code text, needs more passes:
 - [X] Hindley-Milner type inference, so we can predict errors and map function 
       params to types where needed
+  - [X] Add the inferred type to all Ast objects once inferred
+  - [ ] Make sure type variables get replaced properly (BinOps at least)
   - [ ] Ifs as return types need to be unified
+  
 - [ ] Linking (Do functions mentioned exist? Do modules?)
 - [ ] Listing and generating of required concretely-typed generic functions
 - Then generating source  

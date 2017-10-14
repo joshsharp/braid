@@ -36,22 +36,24 @@ func Compile(input string) (string, error) {
 
 		// print the ast
 		a := result.(ast.Ast)
-		fmt.Println("=", a.Print(0))
+		//fmt.Println("=", a.Print(0))
 
 		env := make(ast.State)
 
 		// infer types for the ast
-		_, err := ast.Infer(a.(ast.Module), &env, nil)
+		typedAst, err := ast.Infer(a, &env, nil)
 		if err != nil {
 			fmt.Println(err.Error())
 			return "", err
 		}
 
+		fmt.Println("=", typedAst.Print(0))
+
 		output, _ := json.MarshalIndent(env, "", "  ")
 		fmt.Println(string(output))
 
 		// print the compiled Go
-		result := a.Compile(env)
+		result := typedAst.Compile(env)
 		//fmt.Println(result)
 		return result, nil
 	}

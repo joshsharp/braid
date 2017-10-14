@@ -2,37 +2,13 @@ package main
 
 import (
 	"testing"
+	"braid/ast"
 )
 
 var examples = []string{`
 # test
-let cheesy = func item item2 {
-	let b = 5.0 + 6.5
-	let c = [5, 6, 7]
-    # more test
-    item ++ " and " ++ item2 ++ " with cheese"
-}
-
-let tester = func a {
-	let nothing = a + 1
-	if a > 100 {
-		a + 1
-	} else if a > 5 {
-		a + 50
-	} else {
-		a + 100
-	}
-}
-
 let main = func {
-	let something = func {
-		4 + 9
-	}
-	let result = 5 * (4 + 6) * 2
-	let yumPizza = cheesy("pineapple", ("bbq" ++ "sauce"))
-	# hoo boy this is a good'un
-	let five = 1 / 1 + 3 * (55 - 2)
-	# let mmm = 1 + 1
+	5 + 5
 }
 `, `
 
@@ -88,6 +64,37 @@ let test = func p {
 }
 
 `}
+
+func TestEmptyModule(t *testing.T){
+	m := ast.Module{Name:"Nothing",Subvalues:[]ast.Ast{}}
+	env := make(ast.State)
+	m2, err := ast.Infer(m, &env,[]ast.Type{})
+	if err != nil {
+		t.Error(err.Error())
+	} else {
+		if m2.GetInferredType().GetName() != ast.Unit.GetName() {
+			t.Error(m2.GetInferredType())
+		}
+	}
+
+}
+
+func TestBasicFunc(t *testing.T){
+	num := ast.BasicAst{ValueType:ast.INT, IntValue:5}
+	//e := ast.Expr{Subvalues:[]ast.Ast{num}}
+	f := ast.Func{Name:"Main", Subvalues:[]ast.Ast{num}}
+	m := ast.Module{Name:"Nothing",Subvalues:[]ast.Ast{f}}
+	env := make(ast.State)
+	m2, err := ast.Infer(m, &env,[]ast.Type{})
+	if err != nil {
+		t.Error(err.Error())
+	} else {
+		if m2.GetInferredType().GetName() != ast.Unit.GetName() {
+			t.Error(m2.GetInferredType())
+		}
+	}
+
+}
 
 func TestExample0(t *testing.T){
 

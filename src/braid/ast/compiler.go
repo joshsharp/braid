@@ -22,12 +22,6 @@ func (a BasicAst) Compile(state State) string {
 			return fmt.Sprintf("//%s\n", a.StringValue)
 		case "String":
 			return fmt.Sprintf("\"%s\"", a.StringValue)
-		case "StringOperator":
-			return fmt.Sprintf(" %s ", a.StringValue)
-		case "IntOperator":
-			return fmt.Sprintf(" %s ", a.StringValue)
-		case "FloatOperator":
-			return fmt.Sprintf(" %s ", a.StringValue)
 		default:
 			return fmt.Sprintf("%s", a.StringValue)
 		}
@@ -62,7 +56,8 @@ func (i Identifier) Compile(state State) string {
 }
 
 func (a ArrayType) Compile(state State) string {
-	values := "[]int{"
+	fmt.Println(a.Print(0))
+	values := fmt.Sprintf("[]%s{", a.InferredType.GetName())
 	for _, el := range a.Subvalues {
 		values += el.Compile(state) + ","
 	}
@@ -216,16 +211,24 @@ func (a RecordInstance) Compile(state State) string {
 }
 
 func (a Func) Compile(state State) string {
-	// TODO: Only compile once we have concrete implementations
+
+	types := a.InferredType.(Function).Types
+	typesLen := len(types)
+
 	result := "func " + a.Name + " ("
 	if len(a.Arguments) > 0 {
 		args := make([]string, 0)
-		for _, el := range a.Arguments {
-			args = append(args, el.Compile(state))
+		for i, el := range a.Arguments {
+			argName := el.Compile(state)
+			argType := types[i].GetName()
+			arg := fmt.Sprintf("%s %s", argName, argType)
+			args = append(args, arg)
 		}
 		result += strings.Join(args, ", ")
 	}
-	result += ") {\n"
+
+
+	result += fmt.Sprintf(") %s {\n", types[typesLen-1].GetName() )
 
 	inner := ""
 

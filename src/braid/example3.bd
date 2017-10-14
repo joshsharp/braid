@@ -1,0 +1,7 @@
+let add = func one two {
+	# one
+	let c = ["one","two","whatever"]
+	let d = one + two + 0
+
+}
+

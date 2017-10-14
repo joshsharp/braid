@@ -1,0 +1,24 @@
+let number = func {
+    5.0 + 5.0
+}
+
+let broken = func {
+    let result = if true {
+        "hello"
+    } else {
+        "never happens"
+
+    }
+}
+
+let main = func {
+	# one
+	let a = 2.0 * 5.0 + number()
+	let f = " " ++ broken() ++ "human"
+	# two
+	let b = 3 * -2 + 20 > 5
+	let c = b
+	let d = [5, 6]
+	let e = b
+}
+

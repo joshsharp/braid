@@ -15,8 +15,9 @@ build:
 	gb build all
 .PHONY: build
 
-test:
+test: grammar build
 	$(GOTEST) -v ./...
+.PHONY: test
 
 grammar:
 	../../bin/pigeon ast/braid.peg | goimports > ast/grammar.go
