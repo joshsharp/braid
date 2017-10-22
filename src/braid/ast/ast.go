@@ -108,6 +108,7 @@ type Assignment struct {
 	Left         Ast
 	Right        Ast
 	InferredType Type
+	Update 		 bool
 }
 
 type RecordType struct {

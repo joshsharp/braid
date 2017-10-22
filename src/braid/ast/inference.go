@@ -5,17 +5,17 @@ import (
 )
 
 var (
-	nextId       int = 0
-	nextVarName      = "a"
-	nextTempName     = "a"
-	Boolean          = TypeOperator{"bool", []Type{}}
-	Integer          = TypeOperator{"int", []Type{}}
-	Float            = TypeOperator{"float", []Type{}}
-	Number           = TypeOperator{"number", []Type{Float, Integer}}
-	String           = TypeOperator{"string", []Type{}}
-	Rune             = TypeOperator{"rune", []Type{}}
-	List             = TypeOperator{"list", []Type{}}
-	Unit             = TypeOperator{"()", []Type{}}
+	nextId      int = 0
+	nextVarName     = "a"
+	nextTempId  int = 0
+	Boolean         = TypeOperator{"bool", []Type{}}
+	Integer         = TypeOperator{"int", []Type{}}
+	Float           = TypeOperator{"float", []Type{}}
+	Number          = TypeOperator{"number", []Type{Float, Integer}}
+	String          = TypeOperator{"string", []Type{}}
+	Rune            = TypeOperator{"rune", []Type{}}
+	List            = TypeOperator{"list", []Type{}}
+	Unit            = TypeOperator{"()", []Type{}}
 )
 
 type InferenceError struct {
@@ -97,8 +97,8 @@ func NewTypeVariable() TypeVariable {
 func NewTempVariable() string {
 
 	nextId += 1
-	name := "__temp_" + nextTempName
-	nextTempName = string(rune(int(nextTempName[0]) + 1))
+	name := fmt.Sprintf("__temp_%d", nextTempId)
+	nextTempId += 1
 	return name
 }
 
@@ -304,7 +304,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		node := node.(If)
 
 		node.TempVar = NewTempVariable()
-		fmt.Println("new temp var", node.TempVar)
+		//fmt.Println("new temp var", node.TempVar)
 
 		ifAst := node.Condition
 		condition, err := Infer(ifAst, env, nonGeneric)
@@ -323,8 +323,41 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		// infer all statements
 		newStatements := []Ast{}
 
-		for _, s := range statements {
+		for i, s := range statements {
 			switch s.(type) {
+			case BasicAst, Expr, BinOp:
+				t, err := Infer(s, env, nonGeneric)
+				thenType = t.GetInferredType()
+
+				if err != nil {
+					return nil, err
+				} else {
+
+					if i == len(statements)-1 {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					} else {
+						newStatements = append(newStatements, t)
+					}
+					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+				}
+
+			case Assignment:
+				t, err := Infer(s, env, nonGeneric)
+				thenType = t.GetInferredType()
+
+				if err != nil {
+					return nil, err
+				} else {
+					newStatements = append(newStatements, t)
+					if i == len(statements)-1 {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t.(Assignment).Left, Update: true}
+						newStatements = append(newStatements, assign)
+					}
+					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+				}
 			default:
 
 				t, err := Infer(s, env, nonGeneric)
@@ -334,6 +367,11 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					return nil, err
 				} else {
 					newStatements = append(newStatements, t)
+					if i == len(statements)-1 {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					}
 					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
 				}
 			}
@@ -345,19 +383,55 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		newStatements = []Ast{}
 
 		// infer all statements
-		for _, s := range statements {
+		for i, s := range statements {
 			switch s.(type) {
-			case Comment:
-				continue
-			default:
+			case BasicAst, BinOp, Expr:
 				t, err := Infer(s, env, nonGeneric)
-				elseType = t.GetInferredType()
+				thenType = t.GetInferredType()
+
+				if err != nil {
+					return nil, err
+				} else {
+
+					if i == len(statements)-1 {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					} else {
+						newStatements = append(newStatements, t)
+					}
+					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+				}
+			case Assignment:
+				t, err := Infer(s, env, nonGeneric)
+				thenType = t.GetInferredType()
 
 				if err != nil {
 					return nil, err
 				} else {
 					newStatements = append(newStatements, t)
-					//fmt.Printf("Infer Else: %s\n", elseType.GetName())
+					if i == len(statements)-1 {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t.(Assignment).Left, Update: true}
+						newStatements = append(newStatements, assign)
+					}
+					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+				}
+			default:
+
+				t, err := Infer(s, env, nonGeneric)
+				thenType = t.GetInferredType()
+
+				if err != nil {
+					return nil, err
+				} else {
+					newStatements = append(newStatements, t)
+					if i == len(statements)-1 {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					}
+					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
 				}
 			}
 		}

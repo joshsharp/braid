@@ -93,9 +93,9 @@ Compiling currently maps straight to outputting code text, needs more passes:
 [ ] Linking (Do functions mentioned exist? Do modules?)
 [ ] Listing and generating of required concretely-typed generic functions
 Then generating source  
+  [ ] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
   [ ] Generate concrete types etc (monomorphise)
   
-
 
 [ ] 'Module' rule
 [X] Compile `let = if` rule specially - this means if expr branches need to be unified

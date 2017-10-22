@@ -44,7 +44,18 @@ func (a BasicAst) Compile(state State) string {
 }
 
 func (o Operator) Compile(state State) string {
-	return fmt.Sprintf(" %s ", o.StringValue)
+	ops := map[string]string{
+		"+": "+",
+		"-": "-",
+		"*": "*",
+		"/": "/",
+		"<": "<",
+		">": ">",
+		"==": "==",
+		"++": "+",
+	}
+
+	return fmt.Sprintf(" %s ", ops[o.StringValue])
 }
 
 func (c Comment) Compile(state State) string {
@@ -101,9 +112,30 @@ func (e Expr) Compile(state State) string {
 func (a Assignment) Compile(state State) string {
 	result := ""
 
-	result += a.Left.Compile(state)
-	result += " := "
-	result += a.Right.Compile(state)
+	switch a.Right.(type){
+	case If:
+		result += a.Right.Compile(state) + "\n"
+
+		result += a.Left.Compile(state)
+		if a.Update {
+			result += " = "
+		} else {
+			result += " := "
+		}
+
+		result += a.Right.(If).TempVar
+	default:
+		result += a.Left.Compile(state)
+		if a.Update {
+			result += " = "
+		} else {
+			result += " := "
+		}
+
+		result += a.Right.Compile(state)
+	}
+
+
 	return result + "\n"
 
 }
