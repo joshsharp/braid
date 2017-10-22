@@ -82,21 +82,23 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Separate AST structs out so not so many multi-use types
 
 Compiling currently maps straight to outputting code text, needs more passes:
-- [X] Hindley-Milner type inference, so we can predict errors and map function 
+[X] Hindley-Milner type inference, so we can predict errors and map function 
       params to types where needed
-  - [X] Add the inferred type to all Ast objects once inferred
-  - [ ] Make sure type variables get replaced properly (BinOps at least)
-  - [ ] Ifs as return types need to be unified
+  [X] Add the inferred type to all Ast objects once inferred
+  [ ] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
+  [X] Ifs as return types need to be unified
+  [ ] Ifs need Assignments added to assign the result to their temp var
+  [ ] Immutability means we cannot assign to a variable that already exists
+  [X] Last expression in a func needs `return` AST inserted with correct variable name etc
+[ ] Linking (Do functions mentioned exist? Do modules?)
+[ ] Listing and generating of required concretely-typed generic functions
+Then generating source  
+  [ ] Generate concrete types etc (monomorphise)
   
-- [ ] Linking (Do functions mentioned exist? Do modules?)
-- [ ] Listing and generating of required concretely-typed generic functions
-- Then generating source  
-  - [ ] Generate concrete types etc (monomorphise)
-  - [ ] Last expression in a func needs `return` inserted
 
 
 [ ] 'Module' rule
-[ ] Compile `let = if` rule specially - this means if expr branches need to be unified
+[X] Compile `let = if` rule specially - this means if expr branches need to be unified
     Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
 [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
     `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`

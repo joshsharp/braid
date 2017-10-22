@@ -208,18 +208,14 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
     }
 }
 
-TopLevelStatement = Comment / FuncDefn / TypeDefn
+TopLevelStatement = FuncDefn / TypeDefn
 
-Statement = Comment / FuncDefn / Assignment / ExprLine
+Statement = FuncDefn / Assignment / ExprLine
 
 ExprLine = e:Expr &'\n' {
     return e, nil
 }
 
-Comment = _ '#' comment:(!EscapedChar .)* &'\n' {
-    //fmt.Println("comment:", string(c.text))
-    return Comment{StringValue: string(c.text[1:])}, nil
-}
 
 TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
     // alias type
@@ -767,6 +763,8 @@ HexDigit = [0-9a-f]i
 
 __ "sigwhitespace" = Comment / [ \r\n\t]+
 
-_ "whitespace" = [ \r\n\t]*
+_ "whitespace" = Comment / [ \r\n\t]*
+
+Comment = [ \r\n\t]* '#' (![\n] .)* &'\n'
 
 EOF = !.

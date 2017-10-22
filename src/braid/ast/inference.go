@@ -5,16 +5,17 @@ import (
 )
 
 var (
-	nextId      int = 0
-	nextVarName     = "'a"
-	Boolean         = TypeOperator{"bool", []Type{}}
-	Integer         = TypeOperator{"int", []Type{}}
-	Float           = TypeOperator{"float", []Type{}}
-	Number          = TypeOperator{"number", []Type{Float, Integer}}
-	String          = TypeOperator{"string", []Type{}}
-	Rune            = TypeOperator{"rune", []Type{}}
-	List            = TypeOperator{"list", []Type{}}
-	Unit            = TypeOperator{"()", []Type{}}
+	nextId       int = 0
+	nextVarName      = "a"
+	nextTempName     = "a"
+	Boolean          = TypeOperator{"bool", []Type{}}
+	Integer          = TypeOperator{"int", []Type{}}
+	Float            = TypeOperator{"float", []Type{}}
+	Number           = TypeOperator{"number", []Type{Float, Integer}}
+	String           = TypeOperator{"string", []Type{}}
+	Rune             = TypeOperator{"rune", []Type{}}
+	List             = TypeOperator{"list", []Type{}}
+	Unit             = TypeOperator{"()", []Type{}}
 )
 
 type InferenceError struct {
@@ -88,9 +89,17 @@ func NewTypeVariable() TypeVariable {
 	t := TypeVariable{}
 	t.Id = nextId
 	nextId += 1
-	t.Name = nextVarName
-	nextVarName = "'" + string(rune(int(nextVarName[1])+1))
+	t.Name = "'" + nextVarName
+	nextVarName = string(rune(int(nextVarName[0]) + 1))
 	return t
+}
+
+func NewTempVariable() string {
+
+	nextId += 1
+	name := "__temp_" + nextTempName
+	nextTempName = string(rune(int(nextTempName[0]) + 1))
+	return name
 }
 
 func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
@@ -113,7 +122,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		Returns:
 			The computed type of the expression.
 	*/
-
 
 	switch node.(type) {
 
@@ -212,7 +220,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 
 		left := Identifier{StringValue: node.Left.(Identifier).StringValue,
-			InferredType:rightSide.GetInferredType()}
+			InferredType: rightSide.GetInferredType()}
 
 		// check in case this is a typevar already stored
 		if t, ok := (*env)[rightSide.GetInferredType().GetName()]; ok {
@@ -285,7 +293,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		// if we see it, be more specific by using the left type
 		if op.GetInferredType().GetName() == Number.GetName() {
 			node.InferredType = lType
-			// TODO: we need to update any of these if they're typevars that don't know
 			// that they've been unified
 		} else {
 			node.InferredType = op.GetInferredType()
@@ -294,8 +301,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		return node, nil
 
 	case If:
-		// TODO: don't unify if not used in assignment
 		node := node.(If)
+
+		node.TempVar = NewTempVariable()
+		fmt.Println("new temp var", node.TempVar)
 
 		ifAst := node.Condition
 		condition, err := Infer(ifAst, env, nonGeneric)
@@ -316,8 +325,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		for _, s := range statements {
 			switch s.(type) {
-			case Comment:
-				continue
 			default:
 
 				t, err := Infer(s, env, nonGeneric)
@@ -460,10 +467,68 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 
 		// infer all statements
-		for _, s := range statements {
+		for i, s := range statements {
 			switch s.(type) {
-			case Comment:
-				continue
+			case If:
+				t, err := Infer(s, &newEnv, nonGeneric)
+
+				if err != nil {
+					return nil, err
+				} else {
+					lastType = t.GetInferredType()
+					newStatements = append(newStatements, t)
+					// if last, replace with its equivalent return
+					if i == len(statements)-1 {
+						returnAst := Return{Value: Identifier{StringValue: t.(If).TempVar}}
+						newStatements = append(newStatements, returnAst)
+					}
+				}
+			case Expr:
+				t, err := Infer(s, &newEnv, nonGeneric)
+
+				if err != nil {
+					return nil, err
+				} else {
+					lastType = t.GetInferredType()
+					// if last, replace with its equivalent return
+					if i == len(statements)-1 {
+						returnAst := Return{Value: t}
+						newStatements = append(newStatements, returnAst)
+					} else {
+						newStatements = append(newStatements, t)
+					}
+				}
+			case BinOp:
+				t, err := Infer(s, &newEnv, nonGeneric)
+
+				if err != nil {
+					return nil, err
+				} else {
+					lastType = t.GetInferredType()
+
+					// if last, replace with its equivalent return
+					if i == len(statements)-1 {
+						returnAst := Return{Value: t}
+						newStatements = append(newStatements, returnAst)
+					} else {
+						newStatements = append(newStatements, t)
+					}
+				}
+			case Assignment:
+				t, err := Infer(s, &newEnv, nonGeneric)
+
+				if err != nil {
+					return nil, err
+				} else {
+					lastType = t.GetInferredType()
+					newStatements = append(newStatements, t)
+					// if last, replace with its equivalent return
+					if i == len(statements)-1 {
+
+						returnAst := Return{Value: t.(Assignment).Left}
+						newStatements = append(newStatements, returnAst)
+					}
+				}
 			default:
 				//fmt.Printf("Encountered %s\n", s.String())
 				t, err := Infer(s, &newEnv, nonGeneric)
@@ -472,8 +537,14 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					return nil, err
 				} else {
 					lastType = t.GetInferredType()
+
 					newStatements = append(newStatements, t)
 					fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
+
+					if i == len(statements)-1 {
+						returnAst := Return{Value: t}
+						newStatements = append(newStatements, returnAst)
+					}
 				}
 			}
 		}

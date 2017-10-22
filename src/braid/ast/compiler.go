@@ -108,10 +108,19 @@ func (a Assignment) Compile(state State) string {
 
 }
 
-func (a If) Compile(state State) string {
-	result := "\nif "
+func (r Return) Compile(state State) string {
+	result := "\nreturn "
+	result += r.Value.Compile(state)
 
-	result += "(" + a.Condition.Compile(state) + ") {\n"
+	return result
+
+}
+
+func (a If) Compile(state State) string {
+	result := fmt.Sprintf("var %s %s\n", a.TempVar, a.InferredType.GetName())
+	result += "\nif "
+
+	result += a.Condition.Compile(state) + " {\n"
 	then := ""
 
 	for _, el := range a.Then {
@@ -215,6 +224,12 @@ func (a Func) Compile(state State) string {
 	types := a.InferredType.(Function).Types
 	typesLen := len(types)
 
+	for _, el := range types {
+		if el.GetName()[0] == '\'' {
+			return fmt.Sprintf("// func `%s` not added, not concrete\n", a.Name)
+		}
+	}
+
 	result := "func " + a.Name + " ("
 	if len(a.Arguments) > 0 {
 		args := make([]string, 0)
@@ -238,8 +253,11 @@ func (a Func) Compile(state State) string {
 		inner += el.Compile(state)
 	}
 
-	for _, el := range strings.Split(inner, "\n") {
+	lines := strings.Split(inner, "\n")
+
+	for _, el := range lines {
 		result += "\t" + el + "\n"
+
 	}
 
 	result += "}\n\n"

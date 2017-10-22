@@ -97,6 +97,7 @@ type RecordInstance struct {
 }
 
 type If struct {
+	TempVar		 string
 	Condition    Ast
 	Then         []Ast
 	Else         []Ast
@@ -137,6 +138,11 @@ type VariantConstructor struct {
 	Fields []Ast
 }
 
+type Return struct {
+	InferredType Type
+	Value Ast
+}
+
 type Ast interface {
 	String() string
 	Print(indent int) string
@@ -173,6 +179,9 @@ func (o Operator) SetInferredType(t Type) {
 	o.InferredType = t
 }
 
+func (r Return) SetInferredType(t Type) {
+	r.InferredType = t
+}
 
 func (c Container) SetInferredType(t Type) {
 	c.InferredType = t
@@ -266,6 +275,10 @@ func (i Identifier) GetInferredType() Type {
 	return i.InferredType
 }
 
+func (r Return) GetInferredType() Type {
+	return r.InferredType
+}
+
 func (r RecordType) GetInferredType() Type {
 	return Unit
 }
@@ -310,6 +323,10 @@ func (m Module) String() string {
 
 func (c Call) String() string {
 	return "Call to " + c.Function.String()
+}
+
+func (r Return) String() string {
+	return "return " + r.Value.String()
 }
 
 func (e Expr) String() string {
@@ -621,6 +638,17 @@ func (a Assignment) Print(indent int) string {
 	str += a.Left.Print(indent + 1)
 	str += a.Right.Print(indent + 1)
 
+	return str
+}
+
+func (r Return) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "Return:\n"
+	str += r.Value.Print(indent + 1)
 	return str
 }
 

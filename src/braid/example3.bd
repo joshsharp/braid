@@ -1,7 +1,7 @@
-let add = func one two {
+let add = func one {
 	# one
 	let c = ["one","two","whatever"]
-	let d = one + two + 0
+	let d = 1 + one
 
 }
 
