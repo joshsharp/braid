@@ -215,12 +215,18 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		///fmt.Println("right side type:", rightSide.GetInferredType())
 		if node.Left.(Identifier).StringValue != "_" {
 			name := node.Left.(Identifier).StringValue
+
+			if _, ok := (*env)[name]; ok {
+				return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
+			}
+
 			(*env)[name] = rightSide.GetInferredType()
 
 		}
 
 		left := Identifier{StringValue: node.Left.(Identifier).StringValue,
 			InferredType: rightSide.GetInferredType()}
+
 
 		// check in case this is a typevar already stored
 		if t, ok := (*env)[rightSide.GetInferredType().GetName()]; ok {
@@ -538,6 +544,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			for _, el := range node.Arguments {
 				newEnv[el.(Identifier).StringValue] = NewTypeVariable()
 			}
+		}
+
+		if _, ok := (*env)[node.Name]; ok {
+			return nil, InferenceError{"Cannot redeclare func " + node.Name + ", it is already declared"}
 		}
 
 		// infer all statements

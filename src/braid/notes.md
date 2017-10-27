@@ -81,22 +81,27 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Type construction also
 [X] Separate AST structs out so not so many multi-use types
 
-Compiling currently maps straight to outputting code text, needs more passes:
+### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
       params to types where needed
   [X] Add the inferred type to all Ast objects once inferred
   [ ] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
   [X] Ifs as return types need to be unified
-  [ ] Ifs need Assignments added to assign the result to their temp var
-  [ ] Immutability means we cannot assign to a variable that already exists
+  [X] Ifs need Assignments added to assign the result to their temp var
+  [X] Immutability means we cannot assign to a variable that already exists
+  [ ] Track used variables and do not compile (remove AST?) of assignments where var is not used,
+      or change to `_`
   [X] Last expression in a func needs `return` AST inserted with correct variable name etc
-[ ] Linking (Do functions mentioned exist? Do modules?)
-[ ] Listing and generating of required concretely-typed generic functions
-Then generating source  
-  [ ] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
+  [X] Allow comments at the end of lines
+  [ ] Infer type of generic functions from params when calling
+[ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
+[ ] Perhaps some way to define an empty func that stands in for an external Go func, so they can be called
+
+### Generating source
+  [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
   [ ] Generate concrete types etc (monomorphise)
   
-
+### Later
 [ ] 'Module' rule
 [X] Compile `let = if` rule specially - this means if expr branches need to be unified
     Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
@@ -110,7 +115,7 @@ Then generating source
 [ ] Exposed functions need to be uppercased
 [ ] Calls to external functions need to be uppercased
 [ ] Look at standard typeclasses in Haskell, see which we could use
-[ ] Allow comments at the end of lines
 
- 
+
+### Much later
 [ ] Automated building, maybe fork something like gb

@@ -1,7 +1,10 @@
-let add = func one {
+let add = func one two {
 	# one
-	let c = ["one","two","whatever"]
-	let d = 1 + one
-
+	two + one
 }
+
+let main = func {
+    let two = add(1,1)
+}
+
 

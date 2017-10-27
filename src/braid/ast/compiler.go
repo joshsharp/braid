@@ -262,7 +262,15 @@ func (a Func) Compile(state State) string {
 		}
 	}
 
-	result := "func " + a.Name + " ("
+	result := ""
+
+	if _, ok := state["scope"]; ok {
+		result += a.Name + " := func ("
+	} else {
+		result += "func " + a.Name + " ("
+	}
+
+
 	if len(a.Arguments) > 0 {
 		args := make([]string, 0)
 		for i, el := range a.Arguments {
@@ -278,11 +286,14 @@ func (a Func) Compile(state State) string {
 	result += fmt.Sprintf(") %s {\n", types[typesLen-1].GetName() )
 
 	inner := ""
+	newState := make(State,0)
+	CopyState(state, newState)
+	newState["scope"] = Function{}
 
 	for _, el := range a.Subvalues {
 		// compile each sub AST
 		// make a result then indent each line
-		inner += el.Compile(state)
+		inner += el.Compile(newState)
 	}
 
 	lines := strings.Split(inner, "\n")
