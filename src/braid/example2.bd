@@ -1,3 +1,5 @@
+module Main
+
 let number = func {
     5.0 + 5.0
 }

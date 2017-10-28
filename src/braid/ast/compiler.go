@@ -7,7 +7,7 @@ import (
 
 
 func (m Module) Compile(state State) string {
-	values := "package main\n\n"
+	values := fmt.Sprintf("package %s\n\n", strings.ToLower(m.Name))
 	for _, el := range m.Subvalues {
 		values += el.Compile(state)
 	}

@@ -1,8 +1,8 @@
-# Notes on developing Bursar
+# Notes on developing Braid
 
-## What's Bursar's mission statement?
+## What's Braid's mission statement?
 All the power of the Go platform (static binaries, concurrency, fast and fast GC) with
-a higher-level syntax. Bursar's higher-level abstractions may result in more code
+a higher-level syntax. Braid's higher-level abstractions may result in more code
 and slower speeds than the representative native Go code, but this tradeoff is explicitly made.
  
 ## What sort of stuff can you do in Bursar that you can't in Go?
@@ -22,11 +22,10 @@ and slower speeds than the representative native Go code, but this tradeoff is e
 - Function definition
 - Modules (single file)
 - Comments
-- Calls to Go functions
-- Calls to Bursar functions
+- Calls to Braid functions
 
 # What are the obvious missing pieces for an MVP?
-- Importing other Bursar modules
+- Importing other modules
 - Importing Go packages? But we can run it through goimports
 - Ability to define a main func? We could implement that anyway though
 
@@ -93,21 +92,22 @@ Also need to work out exporting/header files/signatures and how this will map to
       or change to `_`
   [X] Last expression in a func needs `return` AST inserted with correct variable name etc
   [X] Allow comments at the end of lines
-  [ ] Infer type of generic functions from params when calling
+  [ ] Make sure type variables get updated properly (prune function not working entirely?)
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
 [ ] Perhaps some way to define an empty func that stands in for an external Go func, so they can be called
 
 ### Generating source
   [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
-  [ ] Generate concrete types etc (monomorphise)
+  [ ] Generate concrete types etc (monomorphise) based on args when called
   
 ### Later
-[ ] 'Module' rule
+[X] 'Module' rule
 [X] Compile `let = if` rule specially - this means if expr branches need to be unified
     Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
 [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
     `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`
 [ ] `match` rule 
+[ ] Function annotations as a way of both typing a function and of specifying an external function?
 [ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
 [ ] Work out typeclasses - Elm example https://medium.com/@eeue56/why-type-classes-arent-important-in-elm-yet-dd55be125c81
 [ ] We need a way of defining function signatures. OCaml has interface files, Rust has inline types, 

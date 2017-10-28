@@ -6,11 +6,14 @@ import (
 )
 
 var examples = []string{`
+module Main
+
 # test
 let main = func {
 	5 + 5
 }
 `, `
+module Main
 
 let add = func a b {
 	a + b
@@ -29,6 +32,8 @@ let main = func {
 }
 `,
 `
+module Main
+
 type Person = { name: string, age: int }
 
 type IntList = list int

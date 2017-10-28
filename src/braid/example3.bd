@@ -1,10 +1,12 @@
+module Main
+
 let add = func one two {
 	# one
-	two + one
+	two ++ one
 }
 
 let main = func {
-    let two = add(1,1)
+    let two = add("one","two")
 }
 
 

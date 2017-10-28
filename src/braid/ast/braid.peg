@@ -193,7 +193,7 @@ func toIfaceSlice(v interface{}) []interface{} {
 
 }
 
-Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
+Module = _ "module" __ name:ModuleName __ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
     //fmt.Println("beginning module")
     vals := rest.([]interface{})
     if len(vals) > 0 {
@@ -202,9 +202,9 @@ Module = _ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
         for _, el := range(vals){
             subvalues = append(subvalues, el.(Ast))
         }
-        return Module{Name:"", Subvalues: subvalues}, nil
+        return Module{Name:name.(Identifier).StringValue, Subvalues: subvalues}, nil
     } else {
-        return Module{Name:"", Subvalues: []Ast{stat.(Ast)} }, nil
+        return Module{Name:name.(Identifier).StringValue, Subvalues: []Ast{stat.(Ast)} }, nil
     }
 }
 

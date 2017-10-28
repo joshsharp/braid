@@ -1,3 +1,5 @@
+module Main
+
 # test
 let cheesy = func item item2 {
 	# more test
