@@ -5,17 +5,18 @@ import (
 )
 
 var (
-	nextId      int = 0
-	nextVarName     = "a"
-	nextTempId  int = 0
-	Boolean         = TypeOperator{"bool", []Type{}}
-	Integer         = TypeOperator{"int", []Type{}}
-	Float           = TypeOperator{"float", []Type{}}
-	Number          = TypeOperator{"number", []Type{Float, Integer}}
-	String          = TypeOperator{"string", []Type{}}
-	Rune            = TypeOperator{"rune", []Type{}}
-	List            = TypeOperator{"list", []Type{}}
-	Unit            = TypeOperator{"()", []Type{}}
+	nextId         int = 0
+	nextVarName        = "a"
+	nextTempId     int = 0
+	Boolean            = TypeOperator{"bool", []Type{}}
+	Integer            = TypeOperator{"int", []Type{}}
+	Float              = TypeOperator{"float", []Type{}}
+	Number             = TypeOperator{"number", []Type{Float, Integer}}
+	String             = TypeOperator{"string", []Type{}}
+	Rune               = TypeOperator{"rune", []Type{}}
+	List               = TypeOperator{"list", []Type{}}
+	Unit               = TypeOperator{"()", []Type{}}
+	MainReturnType     = TypeOperator{" ", []Type{}}
 )
 
 type InferenceError struct {
@@ -226,7 +227,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		left := Identifier{StringValue: node.Left.(Identifier).StringValue,
 			InferredType: rightSide.GetInferredType()}
-
 
 		// check in case this is a typevar already stored
 		if t, ok := (*env)[rightSide.GetInferredType().GetName()]; ok {
@@ -633,25 +633,49 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			}
 		}
 
-		node.Subvalues = newStatements
+		if node.Name != "main" {
+			node.Subvalues = newStatements
 
-		// make our function type
-		fType := Function{Name: node.Name, Types: []Type{}}
+			// make our function type
+			fType := Function{Name: node.Name, Types: []Type{}}
 
-		// grab inferred types of args
-		if len(node.Arguments) > 0 {
-			for _, el := range node.Arguments {
-				fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
+			// grab inferred types of args
+			if len(node.Arguments) > 0 {
+				for _, el := range node.Arguments {
+					fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
+				}
 			}
+
+			// now the final type is the return type
+			fType.Types = append(fType.Types, lastType)
+			DiffState(*env, newEnv)
+			fType.Env = newEnv
+
+			(*env)[node.Name] = fType
+			node.InferredType = fType
+
+		} else {
+			// omit return
+			node.Subvalues = newStatements[:len(newStatements)-1]
+
+
+			// make our function type
+			fType := Function{Name: node.Name, Types: []Type{}}
+
+			// grab inferred types of args
+			if len(node.Arguments) > 0 {
+				for _, el := range node.Arguments {
+					fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
+				}
+			}
+
+			fType.Types = []Type{}
+			DiffState(*env, newEnv)
+			fType.Env = newEnv
+
+			(*env)[node.Name] = fType
+			node.InferredType = fType
 		}
-
-		// now the final type is the return type
-		fType.Types = append(fType.Types, lastType)
-		DiffState(*env, newEnv)
-		fType.Env = newEnv
-
-		(*env)[node.Name] = fType
-		node.InferredType = fType
 		return node, nil
 
 	default:

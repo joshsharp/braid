@@ -280,10 +280,13 @@ func (a Func) Compile(state State) string {
 			args = append(args, arg)
 		}
 		result += strings.Join(args, ", ")
+		result += fmt.Sprintf(") %s {\n", types[typesLen-1].GetName() )
+	} else {
+		result += ") {\n"
 	}
 
 
-	result += fmt.Sprintf(") %s {\n", types[typesLen-1].GetName() )
+
 
 	inner := ""
 	newState := make(State,0)

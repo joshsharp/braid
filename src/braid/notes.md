@@ -99,13 +99,13 @@ Also need to work out exporting/header files/signatures and how this will map to
 ### Generating source
   [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
   [ ] Generate concrete types etc (monomorphise) based on args when called
+  [X] `main` needs to either not have a return type, or be renamed and wrapped in another `main`
   
 ### Later
 [X] 'Module' rule
 [X] Compile `let = if` rule specially - this means if expr branches need to be unified
     Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
-[ ] Ifs as expressions might need to be compiled to anonymous functions like so:
-    `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`
+
 [ ] `match` rule 
 [ ] Function annotations as a way of both typing a function and of specifying an external function?
 [ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
@@ -119,3 +119,6 @@ Also need to work out exporting/header files/signatures and how this will map to
 
 ### Much later
 [ ] Automated building, maybe fork something like gb
+
+[ ] Ifs as expressions might need to be compiled to anonymous functions like so:
+    `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`
