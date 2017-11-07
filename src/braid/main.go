@@ -38,7 +38,7 @@ func Compile(input string) (string, error) {
 		a := result.(ast.Ast)
 		//fmt.Println("=", a.Print(0))
 
-		env := make(ast.State)
+		env := ast.State{Env:make(map[string]ast.Type), UsedVariables:make(map[string]bool)}
 
 		// infer types for the ast
 		typedAst, err := ast.Infer(a, &env, nil)

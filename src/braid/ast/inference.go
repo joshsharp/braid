@@ -49,7 +49,10 @@ type Type interface {
 	GetType() string
 }
 
-type State map[string]Type
+type State struct {
+	Env map[string]Type
+	UsedVariables map[string]bool
+}
 
 func (t TypeVariable) GetName() string {
 	return t.Name
@@ -217,11 +220,11 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		if node.Left.(Identifier).StringValue != "_" {
 			name := node.Left.(Identifier).StringValue
 
-			if _, ok := (*env)[name]; ok {
+			if _, ok := (*env).Env[name]; ok {
 				return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
 			}
 
-			(*env)[name] = rightSide.GetInferredType()
+			(*env).Env[name] = rightSide.GetInferredType()
 
 		}
 
@@ -229,8 +232,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			InferredType: rightSide.GetInferredType()}
 
 		// check in case this is a typevar already stored
-		if t, ok := (*env)[rightSide.GetInferredType().GetName()]; ok {
-			(*env)[left.StringValue] = t
+		if t, ok := (*env).Env[rightSide.GetInferredType().GetName()]; ok {
+			(*env).Env[left.StringValue] = t
 			left.InferredType = t
 		}
 
@@ -255,8 +258,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 	case Call:
 		node := node.(Call)
-		if (*env)[node.Function.(Identifier).StringValue] != nil {
-			types := (*env)[node.Function.(Identifier).StringValue].(Function).Types
+		if (*env).Env[node.Function.(Identifier).StringValue] != nil {
+			types := (*env).Env[node.Function.(Identifier).StringValue].(Function).Types
 			node.InferredType = types[len(types)-1]
 			return node, nil
 		}
@@ -524,7 +527,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 		node.Subvalues = newValues
 		// why are we updating the type from the env here?
-		if t, ok := (*env)[lastType.GetName()]; ok {
+		if t, ok := (*env).Env[lastType.GetName()]; ok {
 			lastType = t
 		}
 		node.InferredType = lastType
@@ -535,18 +538,18 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		statements := node.Subvalues
 		newStatements := []Ast{}
 		var lastType Type
-		var newEnv = make(State)
+		var newEnv = State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
 		CopyState(*env, newEnv)
 
 		// init
 		// argument names as type variables ready to be filled
 		if len(node.Arguments) > 0 {
 			for _, el := range node.Arguments {
-				newEnv[el.(Identifier).StringValue] = NewTypeVariable()
+				newEnv.Env[el.(Identifier).StringValue] = NewTypeVariable()
 			}
 		}
 
-		if _, ok := (*env)[node.Name]; ok {
+		if _, ok := (*env).Env[node.Name]; ok {
 			return nil, InferenceError{"Cannot redeclare func " + node.Name + ", it is already declared"}
 		}
 
@@ -642,7 +645,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			// grab inferred types of args
 			if len(node.Arguments) > 0 {
 				for _, el := range node.Arguments {
-					fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
+					fType.Types = append(fType.Types, newEnv.Env[el.(Identifier).StringValue])
 				}
 			}
 
@@ -651,7 +654,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			DiffState(*env, newEnv)
 			fType.Env = newEnv
 
-			(*env)[node.Name] = fType
+			(*env).Env[node.Name] = fType
 			node.InferredType = fType
 
 		} else {
@@ -665,7 +668,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			// grab inferred types of args
 			if len(node.Arguments) > 0 {
 				for _, el := range node.Arguments {
-					fType.Types = append(fType.Types, newEnv[el.(Identifier).StringValue])
+					fType.Types = append(fType.Types, newEnv.Env[el.(Identifier).StringValue])
 				}
 			}
 
@@ -673,7 +676,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			DiffState(*env, newEnv)
 			fType.Env = newEnv
 
-			(*env)[node.Name] = fType
+			(*env).Env[node.Name] = fType
 			node.InferredType = fType
 		}
 		return node, nil
@@ -686,8 +689,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 }
 
 func GetType(name string, env State, nonGeneric []Type) (Type, error) {
-	if _, ok := env[name]; ok {
-		return Fresh(env[name].(Type), nonGeneric), nil
+	if _, ok := env.Env[name]; ok {
+		return Fresh(env.Env[name].(Type), nonGeneric), nil
 	}
 	return nil, InferenceError{"Undefined symbol " + name}
 }
@@ -719,12 +722,12 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			newA := a.(TypeVariable)
 			newA.Instance = b
 			fmt.Printf("Unify %s is now %s\n", a.GetName(), b.GetName())
-			(*env)[a.GetName()] = newA
+			(*env).Env[a.GetName()] = newA
 
 			// try updating other refs to this typevariable
-			for k, v := range *env {
+			for k, v := range (*env).Env {
 				if v.GetName() == a.GetName() {
-					(*env)[k] = b
+					(*env).Env[k] = b
 				}
 			}
 
@@ -894,13 +897,19 @@ func IsGeneric(v TypeVariable, nonGeneric []Type) bool {
 }
 
 func CopyState(existing State, copy State) {
-	for k, v := range existing {
-		copy[k] = v
+	for k, v := range existing.Env {
+		copy.Env[k] = v
+	}
+	for k, v := range existing.UsedVariables {
+		copy.UsedVariables[k] = v
 	}
 }
 
 func DiffState(existing State, copy State) {
-	for k, _ := range existing {
-		delete(copy, k)
+	for k, _ := range existing.Env {
+		delete(copy.Env, k)
+	}
+	for k, _ := range existing.UsedVariables {
+		delete(copy.UsedVariables, k)
 	}
 }

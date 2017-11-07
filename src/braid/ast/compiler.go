@@ -264,7 +264,7 @@ func (a Func) Compile(state State) string {
 
 	result := ""
 
-	if _, ok := state["scope"]; ok {
+	if _, ok := state.Env["scope"]; ok {
 		result += a.Name + " := func ("
 	} else {
 		result += "func " + a.Name + " ("
@@ -286,12 +286,10 @@ func (a Func) Compile(state State) string {
 	}
 
 
-
-
 	inner := ""
-	newState := make(State,0)
+	newState := State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
 	CopyState(state, newState)
-	newState["scope"] = Function{}
+	newState.Env["scope"] = Function{}
 
 	for _, el := range a.Subvalues {
 		// compile each sub AST
