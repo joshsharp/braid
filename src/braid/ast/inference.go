@@ -9,8 +9,8 @@ var (
 	nextVarName        = "a"
 	nextTempId     int = 0
 	Boolean            = TypeOperator{"bool", []Type{}}
-	Integer            = TypeOperator{"int", []Type{}}
-	Float              = TypeOperator{"float", []Type{}}
+	Integer            = TypeOperator{"int64", []Type{}}
+	Float              = TypeOperator{"float64", []Type{}}
 	Number             = TypeOperator{"number", []Type{Float, Integer}}
 	String             = TypeOperator{"string", []Type{}}
 	Rune               = TypeOperator{"rune", []Type{}}
@@ -133,7 +133,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		node := node.(Module)
 		statements := node.Subvalues
 
-		newStatements := []Ast{}
+		var newStatements []Ast
 
 		for _, s := range statements {
 			switch s.(type) {
@@ -253,17 +253,20 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		if err != nil {
 			return nil, err
 		}
+		(*env).UsedVariables[node.StringValue] = true
 		node.InferredType = t
 		return node, nil
 
 	case Call:
 		node := node.(Call)
-		if (*env).Env[node.Function.(Identifier).StringValue] != nil {
-			types := (*env).Env[node.Function.(Identifier).StringValue].(Function).Types
+		if (*env).Env[node.Function.StringValue] != nil {
+			types := (*env).Env[node.Function.StringValue].(Function).Types
 			node.InferredType = types[len(types)-1]
+			(*env).UsedVariables[node.Function.StringValue] = true
+			fmt.Println((*env).UsedVariables)
 			return node, nil
 		}
-		return nil, InferenceError{"Do not know the type of function " + node.Function.(Identifier).StringValue}
+		return nil, InferenceError{"Do not know the type of function " + node.Function.StringValue}
 	case BinOp:
 		//fmt.Printf("Encountered %s\n", node.String())
 		node := node.(BinOp)
@@ -309,10 +312,46 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		return node, nil
 
+	case Container:
+		node := node.(Container)
+		//var lastType Type
+		//var newValues []Ast
+		//
+		//for _, s := range node.Subvalues {
+		//	t, err := Infer(s, env, nonGeneric)
+		//	tType := t.GetInferredType()
+		//
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//	if lastType != nil {
+		//
+		//		err := Unify(&tType, &lastType, env)
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//	}
+		//	lastType = tType
+		//	newValues = append(newValues, t)
+		//
+		//	if err != nil {
+		//		fmt.Println(err.Error())
+		//		return nil, err
+		//	} else {
+		//		fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+		//	}
+		//}
+		//fmt.Printf("Container type inferred")
+		//node.Subvalues = newValues
+		//node.InferredType = lastType
+
+		return node, nil
+
 	case If:
 		node := node.(If)
 
 		node.TempVar = NewTempVariable()
+		(*env).UsedVariables[node.TempVar] = true
 		//fmt.Println("new temp var", node.TempVar)
 
 		ifAst := node.Condition
@@ -345,6 +384,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					if i == len(statements)-1 {
 						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
 							Right: t, Update: true}
+
 						newStatements = append(newStatements, assign)
 					} else {
 						newStatements = append(newStatements, t)
@@ -379,6 +419,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					if i == len(statements)-1 {
 						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
 							Right: t, Update: true}
+
 						newStatements = append(newStatements, assign)
 					}
 					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
@@ -460,15 +501,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		return node, nil
 
-	case Container:
-		// TODO: Do we use this concretely anywhere?
-		//node.InferredType = List
-		return node, nil
-
 	case ArrayType:
 		node := node.(ArrayType)
 		var lastType Type
-		newValues := []Ast{}
+		var newValues []Ast
 
 		for _, s := range node.Subvalues {
 			t, err := Infer(s, env, nonGeneric)
@@ -496,7 +532,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 		node.Subvalues = newValues
 		node.InferredType = lastType
-
+		fmt.Println("Array type is", lastType.GetName())
 		return node, nil
 
 	case Expr:
@@ -536,7 +572,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	case Func:
 		node := node.(Func)
 		statements := node.Subvalues
-		newStatements := []Ast{}
+		var newStatements []Ast
 		var lastType Type
 		var newEnv = State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
 		CopyState(*env, newEnv)
@@ -565,8 +601,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					lastType = t.GetInferredType()
 					newStatements = append(newStatements, t)
 					// if last, replace with its equivalent return
-					if i == len(statements)-1 {
+					if i == len(statements)-1 && node.Name != "main" {
 						returnAst := Return{Value: Identifier{StringValue: t.(If).TempVar}}
+						newEnv.UsedVariables[t.(If).TempVar] = true
 						newStatements = append(newStatements, returnAst)
 					}
 				}
@@ -578,7 +615,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 				} else {
 					lastType = t.GetInferredType()
 					// if last, replace with its equivalent return
-					if i == len(statements)-1 {
+					if i == len(statements)-1 && node.Name != "main" {
 						returnAst := Return{Value: t}
 						newStatements = append(newStatements, returnAst)
 					} else {
@@ -594,7 +631,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					lastType = t.GetInferredType()
 
 					// if last, replace with its equivalent return
-					if i == len(statements)-1 {
+					if i == len(statements)-1 && node.Name != "main" {
 						returnAst := Return{Value: t}
 						newStatements = append(newStatements, returnAst)
 					} else {
@@ -610,9 +647,11 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					lastType = t.GetInferredType()
 					newStatements = append(newStatements, t)
 					// if last, replace with its equivalent return
-					if i == len(statements)-1 {
+					if i == len(statements)-1 && node.Name != "main" {
 
 						returnAst := Return{Value: t.(Assignment).Left}
+						newEnv.UsedVariables[t.(Assignment).Left.(Identifier).StringValue] = true
+						//fmt.Printf("Adding %s as used", t.(Assignment).Left.(Identifier).StringValue)
 						newStatements = append(newStatements, returnAst)
 					}
 				}
@@ -628,7 +667,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					newStatements = append(newStatements, t)
 					fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
 
-					if i == len(statements)-1 {
+					if i == len(statements)-1 && node.Name != "main" {
 						returnAst := Return{Value: t}
 						newStatements = append(newStatements, returnAst)
 					}
@@ -659,8 +698,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		} else {
 			// omit return
-			node.Subvalues = newStatements[:len(newStatements)-1]
-
+			node.Subvalues = newStatements //[:len(newStatements)-1]
 
 			// make our function type
 			fType := Function{Name: node.Name, Types: []Type{}}

@@ -409,7 +409,7 @@ Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
         arguments = []Ast{}
     }
 
-    return Call{Module: module.(Ast), Function: fn.(Ast), Arguments: arguments }, nil
+    return Call{Module: module.(Identifier), Function: fn.(Identifier), Arguments: arguments }, nil
 }
 /
 fn:VariableName args:Arguments _ {
@@ -423,14 +423,14 @@ fn:VariableName args:Arguments _ {
         arguments = []Ast{}
     }
 
-    return Call{Module: nil, Function: fn.(Ast), Arguments: arguments }, nil
+    return Call{Module: Identifier{}, Function: fn.(Identifier), Arguments: arguments }, nil
 }
 /
 fn:VariableName "()" {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
-    return Call{Module: nil, Function: fn.(Ast), Arguments: arguments }, nil
+    return Call{Module: Identifier{}, Function: fn.(Identifier), Arguments: arguments }, nil
 }
 
 

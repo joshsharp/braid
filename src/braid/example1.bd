@@ -1,3 +1,5 @@
+module Main
+
 let add = func a b {
 	a + b
 }

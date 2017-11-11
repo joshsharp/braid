@@ -112,12 +112,22 @@ func (e Expr) Compile(state State) string {
 func (a Assignment) Compile(state State) string {
 	result := ""
 
+	var varName string
+
+	if _, ok := state.UsedVariables[a.Left.(Identifier).StringValue]; !ok {
+		// if this identifier is in not here, means it's unused
+		// so return '_'
+		varName = "_"
+	} else {
+		varName = a.Left.Compile(state)
+	}
+
 	switch a.Right.(type){
 	case If:
 		result += a.Right.Compile(state) + "\n"
 
-		result += a.Left.Compile(state)
-		if a.Update {
+		result += varName
+		if a.Update || varName == "_" {
 			result += " = "
 		} else {
 			result += " := "
@@ -125,8 +135,9 @@ func (a Assignment) Compile(state State) string {
 
 		result += a.Right.(If).TempVar
 	default:
-		result += a.Left.Compile(state)
-		if a.Update {
+
+		result += varName
+		if a.Update || varName == "_" {
 			result += " = "
 		} else {
 			result += " := "
@@ -202,7 +213,7 @@ func (b BinOp) Compile(state State) string {
 
 func (a Call) Compile(state State) string {
 	result := ""
-	if a.Module != nil {
+	if a.Module.StringValue != "" {
 		result += a.Module.Compile(state) + "."
 	}
 	result += a.Function.Compile(state) + "("
@@ -265,11 +276,20 @@ func (a Func) Compile(state State) string {
 	result := ""
 
 	if _, ok := state.Env["scope"]; ok {
-		result += a.Name + " := func ("
+		var varName string
+
+		if _, ok := state.UsedVariables[a.Name]; !ok {
+			// if this identifier is in not here, means it's unused
+			// so return '_'
+			varName = "_"
+		} else {
+			varName = a.Name
+		}
+
+		result += varName + " := func ("
 	} else {
 		result += "func " + a.Name + " ("
 	}
-
 
 	if len(a.Arguments) > 0 {
 		args := make([]string, 0)
@@ -280,15 +300,20 @@ func (a Func) Compile(state State) string {
 			args = append(args, arg)
 		}
 		result += strings.Join(args, ", ")
-		result += fmt.Sprintf(") %s {\n", types[typesLen-1].GetName() )
+
+
+	}
+	result += ") "
+	if typesLen > 0 {
+		result += fmt.Sprintf("%s {\n", types[typesLen-1].GetName())
 	} else {
-		result += ") {\n"
+		result += "{\n"
 	}
 
-
 	inner := ""
-	newState := State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
-	CopyState(state, newState)
+	//innerState := State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
+	//CopyState(newState, innerState)
+	newState := state.Env[a.Name].(Function).Env
 	newState.Env["scope"] = Function{}
 
 	for _, el := range a.Subvalues {

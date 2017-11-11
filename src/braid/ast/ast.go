@@ -80,8 +80,8 @@ type Func struct {
 }
 
 type Call struct {
-	Module       Ast
-	Function     Ast
+	Module       Identifier
+	Function     Identifier
 	Arguments    []Ast
 	InferredType Type
 }
@@ -512,7 +512,7 @@ func (a Call) Print(indent int) string {
 		str += "  "
 	}
 	str += "Call:\n"
-	if a.Module != nil {
+	if a.Module.StringValue != "" {
 		str += a.Module.Print(indent+1) + "."
 	}
 	str += a.Function.Print(indent + 1)
