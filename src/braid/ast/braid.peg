@@ -209,6 +209,7 @@ Module = _ "module" __ name:ModuleName __ stat:TopLevelStatement _ rest:(TopLeve
 }
 
 TopLevelStatement = FuncDefn / TypeDefn
+// / ExternDefn
 
 Statement = FuncDefn / Assignment / ExprLine
 
@@ -216,6 +217,9 @@ ExprLine = e:Expr &'\n' {
     return e, nil
 }
 
+//ExternDefn = _ "extern" __ name:Identifier _ '=' _ importName:StringLiteral _ args:ArgsDefn _ returns:TypeAnnotation {
+//    // TODO: implement
+//}
 
 TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
     // alias type
@@ -326,27 +330,30 @@ _ "let" __ i:Assignable _ !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
-FuncDefn = _ "let" __ i:VariableName _ '=' _ "func" __ ids:(VariableName __)* _ '{' __ statements:(Statement)+ _ '}' _ {
+FuncDefn = _ "let" __ i:VariableName _ '=' _ ids:(ArgsDefn _)? ret:(AnyType _)? '{' __ statements:(Statement)+ _ '}' _ {
     //fmt.Println(string(c.text))
     subvalues := []Ast{}
-    args := []Ast{}
     vals := statements.([]interface{})
+    args := []Ast{}
+
     if len(vals) > 0 {
         for _, el := range(vals){
             subvalues = append(subvalues, el.(Ast))
         }
     }
-    vals = ids.([]interface{})
-    if len(vals) > 0 {
-        restSl := toIfaceSlice(ids)
-        for _, v := range restSl {
-            // we can get each item in the grammar by index
-            restExpr := toIfaceSlice(v)
-            v := restExpr[0].(Ast)
-            args = append(args, v)
-        }
+
+    if ids != nil {
+        vals = ids.([]interface{})
+        args = vals[0].(Container).Subvalues
     }
-    return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues }, nil
+
+    retType := ""
+    if ret != nil {
+        vals = ret.([]interface{})
+        retType = vals[0].(BasicAst).StringValue
+    }
+
+    return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues, ReturnAnnotation: retType }, nil
 }
 
 Expr = ex:(IfExpr / BinOp / Call) {
@@ -433,6 +440,43 @@ fn:VariableName "()" {
     return Call{Module: Identifier{}, Function: fn.(Identifier), Arguments: arguments }, nil
 }
 
+ArgsDefn = '(' _ argument:ArgDefn _ rest:(',' _ ArgDefn)* _ ')' {
+
+    args := []Ast{argument.(Ast)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(Ast)
+            args = append(args, v)
+        }
+    }
+
+    return Container{Type: "Arguments", Subvalues: args}, nil
+}
+
+ArgDefn = name:Identifier _ anno:(':' _ AnyType )? _ {
+    fmt.Println("parsing arg:", string(c.text))
+    arg := name.(Identifier)
+
+    if anno != nil {
+        vals := anno.([]interface{})
+        fmt.Println(vals)
+        //restSl := toIfaceSlice(vals[0])
+
+        switch vals[2].(type) {
+        case BasicAst:
+            arg.Annotation = vals[2].(BasicAst).StringValue
+        case Identifier:
+            arg.Annotation = vals[2].(Identifier).StringValue
+        }
+    }
+    fmt.Println("parsed:", arg)
+    return arg, nil
+}
 
 Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
     args := []Ast{argument.(Ast)}
@@ -724,13 +768,7 @@ Const = '-'? [0-9]+ !'.' {
     return BasicAst{Type:"Bool", BoolValue: false, ValueType:BOOL}, nil
 }
 / Unit
-/ '"' (!EscapedChar .)* '"' {
-    val, err := strconv.Unquote(string(c.text))
-    if err == nil {
-        return BasicAst{Type:"String", StringValue: val, ValueType:STRING}, nil
-    }
-    return nil, err
-}
+/ StringLiteral
 / "'" val:(!EscapedChar .) "'" {
     return BasicAst{Type:"Char", CharValue: rune(c.text[1]), ValueType:CHAR}, nil
 } / ArrayLiteral / RecordInstance / VariantInstance
@@ -739,15 +777,24 @@ Unit = "()" {
     return BasicAst{Type:"Unit", ValueType:NIL}, nil
 }
 
+StringLiteral = '"' (!EscapedChar .)* '"' {
+    val, err := strconv.Unquote(string(c.text))
+    if err == nil {
+        return BasicAst{Type:"String", StringValue: val, ValueType:STRING}, nil
+    }
+    return nil, err
+}
+
 Unused = ('_') {
     return  Identifier{StringValue:"_"}, nil
 }
 
 Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
 
-BaseType = ( "int" / "bool" / "string" / "byte" / "rune" / "float" / "list" ) {
+BaseType = ( "int" / "bool" / "string" / "byte" / "rune" / "float") {
     return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
 }
+/ Unit
 
 EscapedChar = [\x00-\x1f"\\]
 

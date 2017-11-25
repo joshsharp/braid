@@ -14,7 +14,6 @@ var (
 	Number             = TypeOperator{"number", []Type{Float, Integer}}
 	String             = TypeOperator{"string", []Type{}}
 	Rune               = TypeOperator{"rune", []Type{}}
-	List               = TypeOperator{"list", []Type{}}
 	Unit               = TypeOperator{"()", []Type{}}
 	MainReturnType     = TypeOperator{" ", []Type{}}
 )

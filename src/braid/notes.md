@@ -33,18 +33,18 @@ and slower speeds than the representative native Go code, but this tradeoff is e
 
 Syntax: 
 ```
-let add = func a b {
+let add = (a, b) {
     a + b;
 }
 
-add 5 6;
-Mod.add 5 6;
+add(5, 6);
+Mod.add(5, 6);
 ```
 
 ### Type declarations
 
 ```
-type result 'a 'b = 
+type result ('a, 'b) = 
 | OK 'a
 | Error 'b
 
@@ -57,13 +57,7 @@ type vaguePeople 'a = list vaguePerson 'a
 type stringPeople string = list vaguePerson string
 ```
 
-### Calls to Go functions
-
-Perhaps for MVP all calls should just map to Go funcs? That'd be easiest.
-Also need to work out exporting/header files/signatures and how this will map to Go.
-
-## What next?
-
+### Parsing
 [X] Rename back to Braid
 [X] Make new function definition rule that includes the let statement
 [X] Array type literals
@@ -79,6 +73,7 @@ Also need to work out exporting/header files/signatures and how this will map to
 [X] Function application should use parentheses 
 [X] Type construction also
 [X] Separate AST structs out so not so many multi-use types
+[ ] New `extern` rule
 
 ### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
@@ -88,13 +83,14 @@ Also need to work out exporting/header files/signatures and how this will map to
   [X] Ifs as return types need to be unified
   [X] Ifs need Assignments added to assign the result to their temp var
   [X] Immutability means we cannot assign to a variable that already exists
-  [ ] Track used variables and do not compile (remove AST?) of assignments where var is not used,
+  [X] Track used variables and do not compile (remove AST?) of assignments where var is not used,
       or change to `_`
   [X] Last expression in a func needs `return` AST inserted with correct variable name etc
   [X] Allow comments at the end of lines
   [ ] Make sure type variables get updated properly (prune function not working entirely?)
+  [ ] Handle type annotations in func defns
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
-[ ] Perhaps some way to define an empty func that stands in for an external Go func, so they can be called
+[ ] Create stand-in Braid funcs for `extern`-ally imported funcs
 
 ### Generating source
   [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)

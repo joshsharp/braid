@@ -1,14 +1,14 @@
 module Main
 
-let add = func a b {
+let add = (a, b) {
 	a + b
 }
 
-let cheesy = func item item2 {
+let cheesy = (item, item2) {
     item ++ " and " ++ item2 ++ " with cheese"
 }
 
-let main = func {
+let main = {
 	# one
 	let a = 2
 	# two

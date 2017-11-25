@@ -45,6 +45,7 @@ type Comment struct {
 
 type Identifier struct {
 	StringValue  string
+	Annotation   string
 	InferredType Type
 }
 
@@ -73,10 +74,11 @@ type ArrayType struct {
 }
 
 type Func struct {
-	Name         string
-	Arguments    []Ast
-	Subvalues    []Ast
-	InferredType Type
+	Name             string
+	Arguments        []Ast
+	Subvalues        []Ast
+	InferredType     Type
+	ReturnAnnotation string
 }
 
 type Call struct {
@@ -97,7 +99,7 @@ type RecordInstance struct {
 }
 
 type If struct {
-	TempVar		 string
+	TempVar      string
 	Condition    Ast
 	Then         []Ast
 	Else         []Ast
@@ -108,7 +110,7 @@ type Assignment struct {
 	Left         Ast
 	Right        Ast
 	InferredType Type
-	Update 		 bool
+	Update       bool
 }
 
 type RecordType struct {
@@ -141,7 +143,7 @@ type VariantConstructor struct {
 
 type Return struct {
 	InferredType Type
-	Value Ast
+	Value        Ast
 }
 
 type Ast interface {
@@ -304,11 +306,9 @@ func (f If) GetInferredType() Type {
 	return f.InferredType
 }
 
-
 func (o Operator) String() string {
 	return o.StringValue
 }
-
 
 func (c Container) String() string {
 	values := ""
@@ -372,7 +372,6 @@ func (v VariantType) String() string {
 
 func (a ArrayType) String() string {
 	values := []string{}
-
 
 	for _, el := range a.Subvalues {
 		values = append(values, fmt.Sprint(el))
