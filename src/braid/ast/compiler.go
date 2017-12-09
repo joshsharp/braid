@@ -105,6 +105,9 @@ func (e Expr) Compile(state State) string {
 		for _, el := range e.Subvalues {
 			values += el.Compile(state)
 		}
+		if e.AsStatement {
+			values += "\n"
+		}
 		return values
 	}
 }
@@ -260,6 +263,18 @@ func (a RecordInstance) Compile(state State) string {
 	result += "}\n"
 
 	return result
+}
+
+func (e Extern) Compile(state State) string {
+	// TODO: handle nested packages
+
+	path := strings.Split(e.Import, ".")
+	//if _, ok := state.UsedVariables[e.Name]; !ok {
+	//	return fmt.Sprintf("import _ \"%s\"\n", path[0])
+	//} else {
+		name := "__go_" + path[0]
+		return fmt.Sprintf("import %s \"%s\"\n", name, path[0])
+	//}
 }
 
 func (a Func) Compile(state State) string {

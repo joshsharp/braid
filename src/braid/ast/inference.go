@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strings"
 )
 
 var (
@@ -39,6 +40,7 @@ type TypeOperator struct {
 
 type Function struct {
 	Name  string
+	External string
 	Types []Type
 	Env   State
 }
@@ -157,6 +159,36 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		//node.InferredType = Unit
 		return node, nil
+	case Extern:
+		node := node.(Extern)
+
+		// make our function type
+		fType := Function{Name: node.Name, External:"__go_" + node.Import, Types: []Type{}}
+
+		// grab inferred types of args
+		if len(node.Arguments) > 0 {
+			for _, el := range node.Arguments {
+				// lookup the type from its annotation
+				fmt.Println("looking up arg type annotation:", el.(Identifier).Annotation)
+				anno, err := GetTypeFromAnnotation(el.(Identifier).Annotation)
+				if err != nil {
+					return nil, err
+				}
+				fType.Types = append(fType.Types, anno)
+			}
+		}
+
+		// lookup return type annotation
+		fmt.Println("looking up return type annotation:", node.ReturnAnnotation)
+		anno, err := GetTypeFromAnnotation(node.ReturnAnnotation)
+		if err != nil {
+			return nil, err
+		}
+		fType.Types = append(fType.Types, anno)
+		(*env).Env[node.Name] = fType
+		node.InferredType = fType
+
+		return node, nil
 
 	case BasicAst:
 		node := node.(BasicAst)
@@ -258,14 +290,31 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 	case Call:
 		node := node.(Call)
-		if (*env).Env[node.Function.StringValue] != nil {
-			types := (*env).Env[node.Function.StringValue].(Function).Types
-			node.InferredType = types[len(types)-1]
-			(*env).UsedVariables[node.Function.StringValue] = true
-			fmt.Println((*env).UsedVariables)
-			return node, nil
+		fType := (*env).Env[node.Function.StringValue]
+		if fType == nil {
+			return nil, InferenceError{"Do not know the type of function " + node.Function.StringValue}
 		}
-		return nil, InferenceError{"Do not know the type of function " + node.Function.StringValue}
+
+		// TODO: unify call args and func args
+		// infer call args so they get marked as used, and eventually unify with func defn args
+		for _, el := range(node.Arguments){
+			_, err := Infer(el, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		types := fType.(Function).Types
+		node.InferredType = types[len(types)-1]
+		(*env).UsedVariables[node.Function.StringValue] = true
+
+		if fType.(Function).External != "" {
+			node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External,".",2)[0]}
+			node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External,".",2)[1]}
+		}
+		fmt.Println((*env).UsedVariables)
+		return node, nil
+
 	case BinOp:
 		//fmt.Printf("Encountered %s\n", node.String())
 		node := node.(BinOp)
@@ -313,36 +362,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 	case Container:
 		node := node.(Container)
-		//var lastType Type
-		//var newValues []Ast
-		//
-		//for _, s := range node.Subvalues {
-		//	t, err := Infer(s, env, nonGeneric)
-		//	tType := t.GetInferredType()
-		//
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	if lastType != nil {
-		//
-		//		err := Unify(&tType, &lastType, env)
-		//		if err != nil {
-		//			return nil, err
-		//		}
-		//	}
-		//	lastType = tType
-		//	newValues = append(newValues, t)
-		//
-		//	if err != nil {
-		//		fmt.Println(err.Error())
-		//		return nil, err
-		//	} else {
-		//		fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
-		//	}
-		//}
-		//fmt.Printf("Container type inferred")
-		//node.Subvalues = newValues
-		//node.InferredType = lastType
 
 		return node, nil
 
@@ -723,6 +742,21 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	}
 
 	return nil, InferenceError{"Don't know this type: " + node.String()}
+}
+
+func GetTypeFromAnnotation(name string)(Type, error){
+	types := make(map[string]Type)
+	types["int64"] = Integer
+	types["float64"] = Float
+	types["string"] = String
+	types["rune"] = Rune
+	types["bool"] = Boolean
+	types["()"] = Unit
+
+	if val, ok := types[name]; ok {
+		return val, nil
+	}
+	return nil, InferenceError{fmt.Sprintf("Do not know annotated type '%s'", name)}
 }
 
 func GetType(name string, env State, nonGeneric []Type) (Type, error) {

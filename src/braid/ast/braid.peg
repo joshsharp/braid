@@ -208,18 +208,26 @@ Module = _ "module" __ name:ModuleName __ stat:TopLevelStatement _ rest:(TopLeve
     }
 }
 
-TopLevelStatement = FuncDefn / TypeDefn
-// / ExternDefn
+TopLevelStatement = FuncDefn / TypeDefn / ExternDefn
 
 Statement = FuncDefn / Assignment / ExprLine
 
 ExprLine = e:Expr &'\n' {
+    //fmt.Println(e)
+    // wrap calls as statements in an expr
+    switch e.(type){
+        case Call:
+            ex := Expr{Subvalues: []Ast{e.(Call)}, AsStatement: true}
+            return ex, nil
+    }
     return e, nil
 }
 
-//ExternDefn = _ "extern" __ name:Identifier _ '=' _ importName:StringLiteral _ args:ArgsDefn _ returns:TypeAnnotation {
-//    // TODO: implement
-//}
+ExternDefn = _ "extern" __ name:Identifier _ '=' _ importName:StringLiteral _ args:ArgsDefn _ ret:BaseType {
+
+    return Extern{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
+        Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst).StringValue }, nil
+}
 
 TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
     // alias type
@@ -791,7 +799,7 @@ Unused = ('_') {
 
 Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
 
-BaseType = ( "int" / "bool" / "string" / "byte" / "rune" / "float") {
+BaseType = ( "int" / "bool" / "string" / "byte" / "rune" / "float" / "()") {
     return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
 }
 / Unit

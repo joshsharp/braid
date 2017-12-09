@@ -1,8 +1,7 @@
 module Main
 
-# extern println = "fmt.Println" (string) ()
+extern println = "fmt.Println" (s: string) ()
 
-# test
 let cheesy = (item: string, item2: string) {
 	# more test
     item ++ " and " ++ item2 ++ " with cheese"
@@ -25,6 +24,7 @@ let main = {
 	}
 	let a = something()
 	let yumPizza = cheesy("pineapple", ("bbq" ++ "sauce"))
+	println(yumPizza)
 	# some comment
 	let five = 1 / 1 + 3 * (55 - 2)
 	# let mmm = 1 + 1

@@ -53,6 +53,7 @@ type Expr struct {
 	Type         string
 	Subvalues    []Ast
 	InferredType Type
+	AsStatement	 bool
 }
 
 type BinOp struct {
@@ -144,6 +145,18 @@ type VariantConstructor struct {
 type Return struct {
 	InferredType Type
 	Value        Ast
+}
+
+type Extern struct {
+	Name             string
+	Import			 string
+	Arguments        []Ast
+	InferredType     Type
+	ReturnAnnotation string
+}
+
+func (e Extern) GetInferredType() Type {
+	return e.InferredType
 }
 
 type Ast interface {
@@ -703,5 +716,19 @@ func (c VariantConstructor) Print(indent int) string {
 	}
 	str += "Constructor:\n"
 
+	return str
+}
+
+func (e Extern) String() string {
+	return "external " + e.Name
+}
+
+func (e Extern) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "external " + e.Name + " (" + e.Import + ")"
 	return str
 }
