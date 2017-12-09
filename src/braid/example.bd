@@ -2,7 +2,7 @@ module Main
 
 extern println = "fmt.Println" (s: string) ()
 
-let cheesy = (item: string, item2: string) {
+let cheesy = (item, item2) {
 	# more test
     item ++ " and " ++ item2 ++ " with cheese"
 }
@@ -19,7 +19,7 @@ let tester = (a) {
 }
 
 let main = {
-	let something = int {
+	let something = {
 		4 + 9
 	}
 	let a = something()

@@ -467,12 +467,12 @@ ArgsDefn = '(' _ argument:ArgDefn _ rest:(',' _ ArgDefn)* _ ')' {
 }
 
 ArgDefn = name:Identifier _ anno:(':' _ AnyType )? _ {
-    fmt.Println("parsing arg:", string(c.text))
+    //fmt.Println("parsing arg:", string(c.text))
     arg := name.(Identifier)
 
     if anno != nil {
         vals := anno.([]interface{})
-        fmt.Println(vals)
+        //fmt.Println(vals)
         //restSl := toIfaceSlice(vals[0])
 
         switch vals[2].(type) {
@@ -482,7 +482,7 @@ ArgDefn = name:Identifier _ anno:(':' _ AnyType )? _ {
             arg.Annotation = vals[2].(Identifier).StringValue
         }
     }
-    fmt.Println("parsed:", arg)
+    //fmt.Println("parsed:", arg)
     return arg, nil
 }
 

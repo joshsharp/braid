@@ -152,10 +152,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			}
 		}
 		node.Subvalues = newStatements
-		for _, s := range node.Subvalues {
-
-			fmt.Printf("Module infer %s: %s\n", s.String(), s.GetInferredType())
-		}
+		//for _, s := range node.Subvalues {
+		//
+		//	fmt.Printf("Module infer %s: %s\n", s.String(), s.GetInferredType())
+		//}
 
 		//node.InferredType = Unit
 		return node, nil
@@ -169,7 +169,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		if len(node.Arguments) > 0 {
 			for _, el := range node.Arguments {
 				// lookup the type from its annotation
-				fmt.Println("looking up arg type annotation:", el.(Identifier).Annotation)
+				//fmt.Println("looking up arg type annotation:", el.(Identifier).Annotation)
 				anno, err := GetTypeFromAnnotation(el.(Identifier).Annotation)
 				if err != nil {
 					return nil, err
@@ -179,7 +179,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 
 		// lookup return type annotation
-		fmt.Println("looking up return type annotation:", node.ReturnAnnotation)
+		//fmt.Println("looking up return type annotation:", node.ReturnAnnotation)
 		anno, err := GetTypeFromAnnotation(node.ReturnAnnotation)
 		if err != nil {
 			return nil, err
@@ -312,7 +312,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External,".",2)[0]}
 			node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External,".",2)[1]}
 		}
-		fmt.Println((*env).UsedVariables)
+		//fmt.Println((*env).UsedVariables)
 		return node, nil
 
 	case BinOp:
@@ -542,15 +542,15 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			newValues = append(newValues, t)
 
 			if err != nil {
-				fmt.Println(err.Error())
+				//fmt.Println(err.Error())
 				return nil, err
 			} else {
-				fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+				//fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
 			}
 		}
 		node.Subvalues = newValues
 		node.InferredType = lastType
-		fmt.Println("Array type is", lastType.GetName())
+		//fmt.Println("Array type is", lastType.GetName())
 		return node, nil
 
 	case Expr:
@@ -683,7 +683,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					lastType = t.GetInferredType()
 
 					newStatements = append(newStatements, t)
-					fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
+					//fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
 
 					if i == len(statements)-1 && node.Name != "main" {
 						returnAst := Return{Value: t}
@@ -792,7 +792,7 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 
 			newA := a.(TypeVariable)
 			newA.Instance = b
-			fmt.Printf("Unify %s is now %s\n", a.GetName(), b.GetName())
+			//fmt.Printf("Unify %s is now %s\n", a.GetName(), b.GetName())
 			(*env).Env[a.GetName()] = newA
 
 			// try updating other refs to this typevariable
