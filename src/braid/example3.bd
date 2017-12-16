@@ -1,11 +1,11 @@
 module Main
 
-let add = func one two {
+let add = (one, two) {
 	# one
 	two ++ one
 }
 
-let main = func {
+let main = {
     let two = add("one","two")
 }
 

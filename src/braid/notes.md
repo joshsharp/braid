@@ -73,13 +73,13 @@ type stringPeople string = list vaguePerson string
 [X] Function application should use parentheses 
 [X] Type construction also
 [X] Separate AST structs out so not so many multi-use types
-[ ] New `extern` rule
+[X] New `extern` rule
 
 ### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
       params to types where needed
   [X] Add the inferred type to all Ast objects once inferred
-  [ ] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
+  
   [X] Ifs as return types need to be unified
   [X] Ifs need Assignments added to assign the result to their temp var
   [X] Immutability means we cannot assign to a variable that already exists
@@ -87,10 +87,14 @@ type stringPeople string = list vaguePerson string
       or change to `_`
   [X] Last expression in a func needs `return` AST inserted with correct variable name etc
   [X] Allow comments at the end of lines
+  [X] Handle type annotations in func defns
+  [X] Create stand-in Braid funcs for `extern`-ally imported funcs
   [ ] Make sure type variables get updated properly (prune function not working entirely?)
-  [ ] Handle type annotations in func defns
+  [ ] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
+  [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
+      `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() }`
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
-[ ] Create stand-in Braid funcs for `extern`-ally imported funcs
+  
 
 ### Generating source
   [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
@@ -103,18 +107,14 @@ type stringPeople string = list vaguePerson string
     Kotlin has special let if expression form that's unified https://kotlinlang.org/docs/reference/control-flow.html 
 
 [ ] `match` rule 
-[ ] Function annotations as a way of both typing a function and of specifying an external function?
+[X] Function annotations as a way of both typing a function and of specifying an external function?
 [ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
 [ ] Work out typeclasses - Elm example https://medium.com/@eeue56/why-type-classes-arent-important-in-elm-yet-dd55be125c81
 [ ] We need a way of defining function signatures. OCaml has interface files, Rust has inline types, 
-    Haskell/Elm define on the line above. Can't leave it to H-M, need option of explicit typing 
+    Haskell/Elm define on the line above. Can't leave it to H-M, need option of explicit typing. Annotations?
 [ ] Exposed functions need to be uppercased
 [ ] Calls to external functions need to be uppercased
 [ ] Look at standard typeclasses in Haskell, see which we could use
 
-
 ### Much later
 [ ] Automated building, maybe fork something like gb
-
-[ ] Ifs as expressions might need to be compiled to anonymous functions like so:
-    `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() };`

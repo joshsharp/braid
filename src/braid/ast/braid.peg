@@ -213,11 +213,14 @@ TopLevelStatement = FuncDefn / TypeDefn / ExternDefn
 Statement = FuncDefn / Assignment / ExprLine
 
 ExprLine = e:Expr &'\n' {
-    //fmt.Println(e)
+    fmt.Println("line:", e)
     // wrap calls as statements in an expr
     switch e.(type){
         case Call:
             ex := Expr{Subvalues: []Ast{e.(Call)}, AsStatement: true}
+            return ex, nil
+        case Expr:
+            ex := Expr{Subvalues: e.(Expr).Subvalues, AsStatement: true}
             return ex, nil
     }
     return e, nil
@@ -364,25 +367,13 @@ FuncDefn = _ "let" __ i:VariableName _ '=' _ ids:(ArgsDefn _)? ret:(AnyType _)? 
     return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues, ReturnAnnotation: retType }, nil
 }
 
-Expr = ex:(IfExpr / BinOp / Call) {
+Expr = ex:(IfExpr / CompoundExpr) {
     //fmt.Printf("top-level expr: %s\n", string(c.text))
     //fmt.Println(ex)
     return ex, nil
 }
 
-IfExpr = _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" _ elseifs:IfExpr {
-    //fmt.Printf("if: %s\n", string(c.text))
-    subvalues := []Ast{}
-    vals := thens.([]interface{})
-    if len(vals) > 0 {
-        for _, el := range(vals){
-            subvalues = append(subvalues, el.(Ast))
-        }
-    }
-    return If{Condition: expr.(Ast), Then: subvalues, Else: []Ast{elseifs.(Ast)} }, nil
-}
-/
-_ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ elses:(Statement)+ __ '}' {
+IfExpr = _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ elses:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -401,6 +392,18 @@ _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ else
     return If{Condition: expr.(Ast), Then: subvalues, Else: elsevalues }, nil
 }
 /
+_ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" elseifs:IfExpr {
+    //fmt.Printf("if: %s\n", string(c.text))
+    subvalues := []Ast{}
+    vals := thens.([]interface{})
+    if len(vals) > 0 {
+        for _, el := range(vals){
+            subvalues = append(subvalues, el.(Ast))
+        }
+    }
+    return If{Condition: expr.(Ast), Then: subvalues, Else: []Ast{elseifs.(Ast)} }, nil
+}
+/
 _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
@@ -413,7 +416,7 @@ _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
+Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -427,7 +430,7 @@ Call = module:ModuleName '.' fn:VariableName args:Arguments _ {
     return Call{Module: module.(Identifier), Function: fn.(Identifier), Arguments: arguments }, nil
 }
 /
-fn:VariableName args:Arguments _ {
+_ fn:VariableName args:Arguments _ {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -441,7 +444,7 @@ fn:VariableName args:Arguments _ {
     return Call{Module: Identifier{}, Function: fn.(Identifier), Arguments: arguments }, nil
 }
 /
-fn:VariableName "()" {
+_ fn:VariableName "()" {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -816,9 +819,11 @@ NonZeroDecimalDigit = [1-9]
 
 HexDigit = [0-9a-f]i
 
-__ "sigwhitespace" = Comment / [ \r\n\t]+
+__ "sigwhitespace" = Comments / [ \r\n\t]+
 
-_ "whitespace" = Comment / [ \r\n\t]*
+_ "whitespace" = Comments / [ \r\n\t]*
+
+Comments = (Comment)+
 
 Comment = [ \r\n\t]* '#' (![\n] .)* &'\n'
 

@@ -595,6 +595,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		var newEnv = State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
 		CopyState(*env, newEnv)
 
+		// TODO: use type annotations here, don't just ignore them
+
 		// init
 		// argument names as type variables ready to be filled
 		if len(node.Arguments) > 0 {

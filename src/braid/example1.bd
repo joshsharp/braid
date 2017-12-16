@@ -1,6 +1,6 @@
 module Main
 
-let add = (a, b) {
+let add = (a: int, b: int) int {
 	a + b
 }
 

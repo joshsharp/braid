@@ -1,10 +1,10 @@
 module Main
 
-let number = func {
+let number = {
     5.0 + 5.0
 }
 
-let broken = func {
+let broken = {
     let result = if true {
         "hello"
     } else {
@@ -13,7 +13,7 @@ let broken = func {
     }
 }
 
-let main = func {
+let main = {
 	# one
 	let a = 2.0 * 5.0 + number()
 	let f = broken() ++ "human"
