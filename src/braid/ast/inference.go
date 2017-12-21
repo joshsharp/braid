@@ -53,6 +53,7 @@ type Type interface {
 type State struct {
 	Env map[string]Type
 	UsedVariables map[string]bool
+	Imports map[string]bool
 }
 
 func (t TypeVariable) GetName() string {
@@ -90,7 +91,7 @@ func (t Function) GetType() string {
 	return name
 }
 
-func NewTypeVariable() TypeVariable {
+func NewTypeVariable() Type {
 	t := TypeVariable{}
 	t.Id = nextId
 	nextId += 1
@@ -601,9 +602,22 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		// argument names as type variables ready to be filled
 		if len(node.Arguments) > 0 {
 			for _, el := range node.Arguments {
-				newEnv.Env[el.(Identifier).StringValue] = NewTypeVariable()
+				newType := NewTypeVariable()
+				newEnv.Env[el.(Identifier).StringValue] = newType
+				if el.(Identifier).Annotation != "" {
+					t, err := GetTypeFromAnnotation(el.(Identifier).Annotation)
+					if err != nil {
+						return nil, InferenceError{fmt.Sprintf("Cannot understand type annotation %s: %s",
+							el.(Identifier).StringValue,
+							el.(Identifier).Annotation)}
+					}
+
+					Unify(&t, &newType, &newEnv)
+				}
 			}
 		}
+
+
 
 		if _, ok := (*env).Env[node.Name]; ok {
 			return nil, InferenceError{"Cannot redeclare func " + node.Name + ", it is already declared"}
@@ -886,7 +900,7 @@ func freshRec(tp Type, nonGeneric []Type, mappings map[TypeVariable]TypeVariable
 	case TypeVariable:
 		if IsGeneric(p.(TypeVariable), nonGeneric) {
 			if _, ok := mappings[p.(TypeVariable)]; !ok {
-				mappings[p.(TypeVariable)] = NewTypeVariable()
+				mappings[p.(TypeVariable)] = NewTypeVariable().(TypeVariable)
 			}
 		} else {
 			return p

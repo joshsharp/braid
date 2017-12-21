@@ -162,7 +162,7 @@ func (e Extern) GetInferredType() Type {
 type Ast interface {
 	String() string
 	Print(indent int) string
-	Compile(state State) string
+	Compile(state State) (string, State)
 	GetInferredType() Type
 }
 
@@ -729,6 +729,6 @@ func (e Extern) Print(indent int) string {
 	for i := 0; i < indent; i++ {
 		str += "  "
 	}
-	str += "external " + e.Name + " (" + e.Import + ")"
+	str += "external " + e.Name + " (" + e.Import + ")\n"
 	return str
 }

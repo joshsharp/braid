@@ -193,7 +193,7 @@ func toIfaceSlice(v interface{}) []interface{} {
 
 }
 
-Module = _ "module" __ name:ModuleName __ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
+Module = _ "module" __N name:ModuleName __ stat:TopLevelStatement _ rest:(TopLevelStatement)* _ EOF {
     //fmt.Println("beginning module")
     vals := rest.([]interface{})
     if len(vals) > 0 {
@@ -212,7 +212,7 @@ TopLevelStatement = FuncDefn / TypeDefn / ExternDefn
 
 Statement = FuncDefn / Assignment / ExprLine
 
-ExprLine = e:Expr &'\n' {
+ExprLine = e:Expr N {
     fmt.Println("line:", e)
     // wrap calls as statements in an expr
     switch e.(type){
@@ -226,7 +226,7 @@ ExprLine = e:Expr &'\n' {
     return e, nil
 }
 
-ExternDefn = _ "extern" __ name:Identifier _ '=' _ importName:StringLiteral _ args:ArgsDefn _ ret:BaseType {
+ExternDefn = _ "extern" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn _N ret:BaseType {
 
     return Extern{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
         Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst).StringValue }, nil
@@ -327,21 +327,21 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
 
 AnyType = BaseType / TypeParameter
 
-Assignment = _ "let" __ i:Assignable _ '=' _ expr:Expr _ {
+Assignment = _ "let" __N i:Assignable _N '=' _N expr:Expr N {
     //fmt.Println("assignment:", string(c.text))
 
     return Assignment{Left: i.(Ast), Right: expr.(Ast)}, nil
 }
 /
-_ "let" __ !Assignable {
+_ "let" __N !Assignable {
     return nil, errors.New("Variable name or '_' (unused result) required here")
 }
 /
-_ "let" __ i:Assignable _ !'=' {
+_ "let" __N i:Assignable _N !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
-FuncDefn = _ "let" __ i:VariableName _ '=' _ ids:(ArgsDefn _)? ret:(AnyType _)? '{' __ statements:(Statement)+ _ '}' _ {
+FuncDefn = _ "let" __N i:VariableName _N '=' _N ids:(ArgsDefn _)? ret:(AnyType _)? '{' __ statements:(Statement)+ _ '}' _ {
     //fmt.Println(string(c.text))
     subvalues := []Ast{}
     vals := statements.([]interface{})
@@ -373,7 +373,7 @@ Expr = ex:(IfExpr / CompoundExpr) {
     return ex, nil
 }
 
-IfExpr = _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '{' _ elses:(Statement)+ __ '}' {
+IfExpr = _ "if" __N expr:BinOpBool _N '{' _ thens:(Statement)+ __ '}' _N "else" _N '{' _ elses:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -392,7 +392,7 @@ IfExpr = _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' _ "else" _ '
     return If{Condition: expr.(Ast), Then: subvalues, Else: elsevalues }, nil
 }
 /
-_ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" elseifs:IfExpr {
+_ "if" __N expr:BinOpBool _N '{' _ thens:(Statement)+ _ '}' _N "else" elseifs:IfExpr {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -404,7 +404,7 @@ _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ _ '}' _ "else" elseifs:IfExp
     return If{Condition: expr.(Ast), Then: subvalues, Else: []Ast{elseifs.(Ast)} }, nil
 }
 /
-_ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
+_ "if" __N expr:BinOpBool _N '{' _ thens:(Statement)+ __ '}' {
     //fmt.Printf("if: %s\n", string(c.text))
     subvalues := []Ast{}
     vals := thens.([]interface{})
@@ -416,7 +416,7 @@ _ "if" __ expr:BinOpBool _ '{' _ thens:(Statement)+ __ '}' {
     return If{Condition: expr.(Ast), Then: subvalues }, nil
 }
 
-Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
+Call = _ module:ModuleName '.' fn:VariableName args:Arguments {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -430,7 +430,7 @@ Call = _ module:ModuleName '.' fn:VariableName args:Arguments _ {
     return Call{Module: module.(Identifier), Function: fn.(Identifier), Arguments: arguments }, nil
 }
 /
-_ fn:VariableName args:Arguments _ {
+_ fn:VariableName args:Arguments {
     //fmt.Println("call", string(c.text))
     arguments := []Ast{}
 
@@ -511,7 +511,7 @@ Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
     return Container{Type: "Arguments", Subvalues: args}, nil
 }
 
-CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
+CompoundExpr = _ op:BinOp rest:(__N Operator __N BinOp)* {
     //fmt.Println("compound", op, rest)
     vals := rest.([]interface{})
     if len(vals) > 0 {
@@ -533,7 +533,7 @@ CompoundExpr = _ op:BinOp rest:(__ Operator __ BinOp)* {
 
 BinOp = BinOpBool / BinOpEquality / BinOpLow / BinOpHigh / BinOpParens
 
-BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
+BinOpBool = _ first:BinOpEquality rest:(__N OperatorBoolean __N BinOpEquality)* {
 
     subvalues := []Ast{first.(Ast)}
 
@@ -566,7 +566,7 @@ BinOpBool = _ first:BinOpEquality rest:(__ OperatorBoolean __ BinOpEquality)* {
 
 }
 
-BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
+BinOpEquality = _ first:BinOpLow rest:(__N OperatorEquality __N BinOpLow)* {
     subvalues := []Ast{first.(Ast)}
 
     //fmt.Println("binopbool", first, rest)
@@ -598,7 +598,7 @@ BinOpEquality = _ first:BinOpLow rest:(__ OperatorEquality __ BinOpLow)* {
 
 }
 
-BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
+BinOpLow = _ first:BinOpHigh rest:(__N OperatorLow __N BinOpHigh)* {
     subvalues := []Ast{first.(Ast)}
 
     //fmt.Println("binopbool", first, rest)
@@ -630,7 +630,7 @@ BinOpLow = _ first:BinOpHigh rest:(__ OperatorLow __ BinOpHigh)* {
 
 }
 
-BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
+BinOpHigh = _ first:BinOpParens rest:(__N OperatorHigh __N BinOpParens)* {
     subvalues := []Ast{first.(Ast)}
 
     //fmt.Println("binopbool", first, rest)
@@ -661,7 +661,7 @@ BinOpHigh = _ first:BinOpParens rest:(__ OperatorHigh __ BinOpParens)* {
     return subvalues[0].(Ast), nil
 }
 
-BinOpParens = _ '(' _ first:BinOp _ ')' {
+BinOpParens = _ '(' _N first:BinOp _N ')' {
     //fmt.Println("binopparens", first)
     return Expr{Type: "BinOpParens", Subvalues: []Ast{first.(Ast)}}, nil
 } / Value
@@ -819,9 +819,15 @@ NonZeroDecimalDigit = [1-9]
 
 HexDigit = [0-9a-f]i
 
-__ "sigwhitespace" = Comments / [ \r\n\t]+
+__ "reqwhitespace" = Comments / [ \r\n\t]+
 
-_ "whitespace" = Comments / [ \r\n\t]*
+_ "optwhitespace" = Comments / [ \r\n\t]*
+
+__N "singleline_reqwhitepace" = [ \t]+
+
+_N "singleline_optwhitepace" = [ \t]*
+
+N "newline" = Comments / [ \r\t]* '\n'
 
 Comments = (Comment)+
 

@@ -38,7 +38,9 @@ func Compile(input string) (string, error) {
 		a := result.(ast.Ast)
 		//fmt.Println("=", a.Print(0))
 
-		env := ast.State{Env:make(map[string]ast.Type), UsedVariables:make(map[string]bool)}
+		env := ast.State{Env:make(map[string]ast.Type), UsedVariables:make(map[string]bool),
+			Imports:make(map[string]bool),
+		}
 
 		// infer types for the ast
 		typedAst, err := ast.Infer(a, &env, nil)
@@ -53,7 +55,7 @@ func Compile(input string) (string, error) {
 		fmt.Println(string(output))
 
 		// print the compiled Go
-		result := typedAst.Compile(env)
+		result, env := typedAst.Compile(env)
 		//fmt.Println(result)
 		return result, nil
 	}

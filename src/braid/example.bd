@@ -5,8 +5,7 @@ extern printf1 = "fmt.Printf" (s: string, arg1:string) ()
 
 let cheesy = (item, item2) {
 	# more test
-    item ++ " and " ++ item2 ++ " with cheese"
-    + " please"
+    item ++ " and " ++ item2 ++ " with cheese" + " please"
 }
 
 let tester = (a) {
@@ -28,6 +27,7 @@ let main = {
 	let yumPizza = cheesy("pineapple", ("bbq" ++ "sauce"))
 	println(yumPizza)
 	printf1("Woo I can print %s", "things!")
+	println("Again!")
 	# some comment
 	let five = 1 / 1 + 3 * (55 - 2)
 	# let mmm = 1 + 1
