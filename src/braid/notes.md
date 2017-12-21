@@ -113,7 +113,7 @@ type stringPeople string = list vaguePerson string
 [ ] We need a way of defining function signatures. OCaml has interface files, Rust has inline types, 
     Haskell/Elm define on the line above. Can't leave it to H-M, need option of explicit typing. Annotations?
 [ ] Exposed functions need to be uppercased
-[ ] Calls to external functions need to be uppercased
+[X] Calls to external functions need to be uppercased
 [ ] Look at standard typeclasses in Haskell, see which we could use
 
 ### Much later

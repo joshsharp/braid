@@ -357,6 +357,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			// that they've been unified
 		} else {
 			node.InferredType = op.GetInferredType()
+			Unify(&lType, &node.InferredType, env)
+			Unify(&rType, &node.InferredType, env)
 		}
 
 		return node, nil

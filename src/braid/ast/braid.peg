@@ -802,7 +802,7 @@ Unused = ('_') {
 
 Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
 
-BaseType = ( "int" / "bool" / "string" / "byte" / "rune" / "float" / "()") {
+BaseType = ( "int64" / "int" / "bool" / "string" / "byte" / "rune" / "float" / "()" ) {
     return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
 }
 / Unit
