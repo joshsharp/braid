@@ -89,8 +89,9 @@ type stringPeople string = list vaguePerson string
   [X] Allow comments at the end of lines
   [X] Handle type annotations in func defns
   [X] Create stand-in Braid funcs for `extern`-ally imported funcs
+  [X] Unify function call args with the function
   [ ] Make sure type variables get updated properly (prune function not working entirely?)
-  [ ] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
+  [X] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
   [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
       `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() }`
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)

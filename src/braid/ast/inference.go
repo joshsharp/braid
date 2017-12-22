@@ -39,10 +39,10 @@ type TypeOperator struct {
 }
 
 type Function struct {
-	Name  string
+	Name     string
 	External string
-	Types []Type
-	Env   State
+	Types    []Type
+	Env      State
 }
 
 type Type interface {
@@ -51,9 +51,9 @@ type Type interface {
 }
 
 type State struct {
-	Env map[string]Type
+	Env           map[string]Type
 	UsedVariables map[string]bool
-	Imports map[string]bool
+	Imports       map[string]bool
 }
 
 func (t TypeVariable) GetName() string {
@@ -164,7 +164,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		node := node.(Extern)
 
 		// make our function type
-		fType := Function{Name: node.Name, External:"__go_" + node.Import, Types: []Type{}}
+		fType := Function{Name: node.Name, External: "__go_" + node.Import, Types: []Type{}}
 
 		// grab inferred types of args
 		if len(node.Arguments) > 0 {
@@ -296,22 +296,48 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			return nil, InferenceError{"Do not know the type of function " + node.Function.StringValue}
 		}
 
-		// TODO: unify call args and func args
+		// remove one type for return type
+		if len(node.Arguments) != len(fType.(Function).Types)-1 {
+			return nil, InferenceError{fmt.Sprintf("Called function %s with %d argument%s, but it takes %d",
+				node.Function, len(node.Arguments),
+				func() string {
+					if len(node.Arguments) == 1 {
+						return ""
+					}
+					return "s"
+				}(),
+				len(fType.(Function).Types)-1)}
+		}
 		// infer call args so they get marked as used, and eventually unify with func defn args
-		for _, el := range(node.Arguments){
-			_, err := Infer(el, env, nonGeneric)
+		for i, el := range node.Arguments {
+
+			fArg := fType.(Function).Types[i]
+
+			// infer arg
+			el, err := Infer(el, env, nonGeneric)
 			if err != nil {
 				return nil, err
 			}
+
+			t := el.GetInferredType()
+
+			// now unify matching func arg type
+			err = Unify(&t, &fArg, env)
+			if err != nil {
+				return nil, err
+			}
+
+
 		}
 
 		types := fType.(Function).Types
 		node.InferredType = types[len(types)-1]
 		(*env).UsedVariables[node.Function.StringValue] = true
 
+		// if external func, rewrite to original func name and module
 		if fType.(Function).External != "" {
-			node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External,".",2)[0]}
-			node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External,".",2)[1]}
+			node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[0]}
+			node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[1]}
 		}
 		//fmt.Println((*env).UsedVariables)
 		return node, nil
@@ -564,11 +590,11 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		for _, s := range node.Subvalues {
 			//fmt.Printf("Encountered %s\n", s.String())
 			t, err := Infer(s, env, nonGeneric)
-			tType := t.GetInferredType()
 
 			if err != nil {
 				return nil, err
 			}
+			tType := t.GetInferredType()
 			if lastType != nil {
 
 				err := Unify(&tType, &lastType, env)
@@ -595,10 +621,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		statements := node.Subvalues
 		var newStatements []Ast
 		var lastType Type
-		var newEnv = State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
+		var newEnv = State{Env: make(map[string]Type), UsedVariables: make(map[string]bool)}
 		CopyState(*env, newEnv)
-
-		// TODO: use type annotations here, don't just ignore them
 
 		// init
 		// argument names as type variables ready to be filled
@@ -618,8 +642,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 				}
 			}
 		}
-
-
 
 		if _, ok := (*env).Env[node.Name]; ok {
 			return nil, InferenceError{"Cannot redeclare func " + node.Name + ", it is already declared"}
@@ -762,7 +784,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	return nil, InferenceError{"Don't know this type: " + node.String()}
 }
 
-func GetTypeFromAnnotation(name string)(Type, error){
+func GetTypeFromAnnotation(name string) (Type, error) {
 	types := make(map[string]Type)
 	types["int64"] = Integer
 	types["float64"] = Float
