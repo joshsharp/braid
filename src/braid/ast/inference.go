@@ -45,6 +45,32 @@ type Function struct {
 	Env      State
 }
 
+type Record struct {
+	Name   string
+	Params []string
+	Fields map[string]Type
+}
+
+func (r Record) GetName() string {
+	return r.Name
+}
+
+func (r Record) GetType() string {
+	return r.Name
+}
+
+type Variant struct {
+	Name   string
+	Params []string
+}
+
+type VariantConstructorType struct {
+	Name   string
+	Parent Variant
+	Params []string
+	Types  []Type
+}
+
 type Type interface {
 	GetName() string
 	GetType() string
@@ -160,8 +186,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		//node.InferredType = Unit
 		return node, nil
-	case Extern:
-		node := node.(Extern)
+	case ExternFunc:
+		node := node.(ExternFunc)
 
 		// make our function type
 		fType := Function{Name: node.Name, External: "__go_" + node.Import, Types: []Type{}}
@@ -326,7 +352,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			if err != nil {
 				return nil, err
 			}
-
 
 		}
 
@@ -776,7 +801,48 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			node.InferredType = fType
 		}
 		return node, nil
+	case RecordField:
+		node := node.(RecordField)
+		var t Type
+		var err error
+		switch node.Type.(type) {
+		case BasicAst:
+			t, err = GetTypeFromAnnotation(node.Type.(BasicAst).StringValue)
+		case Identifier:
+			t, err = GetTypeFromAnnotation(node.Type.(Identifier).StringValue)
 
+		default:
+			t, err = GetTypeFromAnnotation(node.Type.String())
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		node.InferredType = t
+		return node, nil
+
+	case RecordType:
+		node := node.(RecordType)
+		for i, el := range node.Fields{
+			field, err := Infer(el, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
+			node.Fields[i] = field.(RecordField)
+		}
+
+		var params []string
+		for _, p := range node.Params {
+			params = append(params, p.String())
+		}
+
+		fields := make(map[string]Type)
+		for _, p := range node.Fields {
+			fields[p.Name] = p.InferredType
+		}
+
+		env.Env[node.Name] = Record{Name:node.Name, Params:params, Fields: fields}
+		return node, nil
 	default:
 		panic("Don't know this type: " + node.String())
 	}

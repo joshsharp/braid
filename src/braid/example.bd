@@ -1,7 +1,12 @@
 module Main
 
-extern println = "fmt.Println" (s: string) ()
-extern printf1 = "fmt.Printf" (s: string, arg1:string) ()
+type Payload = {
+    name: string,
+    data: string,
+}
+
+extern func println = "fmt.Println" (s: string) ()
+extern func printf1 = "fmt.Printf" (s: string, arg1:string) ()
 
 let cheesy = (item, item2) {
 	# more test
@@ -26,7 +31,7 @@ let main = {
 	let a = something()
 	let yumPizza = cheesy("pineapple", ("bbq" ++ "sauce"))
 	println(yumPizza)
-	printf1("Woo I can print %s", 6)
+	printf1("Woo I can print %s", "6")
 	println("Again!")
 	# some comment
 	let five = 1 / 1 + 3 * (55 - 2)

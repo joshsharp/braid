@@ -208,12 +208,12 @@ Module = _ "module" __N name:ModuleName __ stat:TopLevelStatement _ rest:(TopLev
     }
 }
 
-TopLevelStatement = FuncDefn / TypeDefn / ExternDefn
+TopLevelStatement = FuncDefn / TypeDefn / ExternFunc
 
 Statement = FuncDefn / Assignment / ExprLine
 
 ExprLine = e:Expr N {
-    fmt.Println("line:", e)
+
     // wrap calls as statements in an expr
     switch e.(type){
         case Call:
@@ -226,9 +226,9 @@ ExprLine = e:Expr N {
     return e, nil
 }
 
-ExternDefn = _ "extern" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn _N ret:BaseType {
+ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn _N ret:BaseType {
 
-    return Extern{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
+    return ExternFunc{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
         Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst).StringValue }, nil
 }
 
@@ -449,6 +449,23 @@ _ fn:VariableName "()" {
     arguments := []Ast{}
 
     return Call{Module: Identifier{}, Function: fn.(Identifier), Arguments: arguments }, nil
+}
+
+RecordAccess = record:VariableName rest:('.' VariableName)+ {
+    args := []Identifier{record.(Identifier)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[1].(Identifier)
+            args = append(args, v)
+        }
+    }
+
+    return RecordAccess{Identifiers: args}, nil
 }
 
 ArgsDefn = '(' _ argument:ArgDefn _ rest:(',' _ ArgDefn)* _ ')' {
@@ -690,7 +707,7 @@ OperatorLow = ( "+" / "-" ) {
     return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
 }
 
-Value = Call / VariableName / Const
+Value = Call / RecordAccess / VariableName / Const
 
 Assignable = VariableName / Unused
 
@@ -800,9 +817,9 @@ Unused = ('_') {
     return  Identifier{StringValue:"_"}, nil
 }
 
-Reserved = ("let" / "if" / "else" / "func" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
+Reserved = ("let" / "if" / "else" / "extern" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
 
-BaseType = ( "int64" / "int" / "bool" / "string" / "byte" / "rune" / "float" / "()" ) {
+BaseType = ( "int64" / "int" / "bool" / "string" / "byte" / "rune" / "float" / "()" / "func" ) {
     return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
 }
 / Unit

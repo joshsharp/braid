@@ -53,7 +53,7 @@ type Expr struct {
 	Type         string
 	Subvalues    []Ast
 	InferredType Type
-	AsStatement	 bool
+	AsStatement  bool
 }
 
 type BinOp struct {
@@ -89,6 +89,11 @@ type Call struct {
 	InferredType Type
 }
 
+type RecordAccess struct {
+	Identifiers  []Identifier
+	InferredType Type
+}
+
 type VariantInstance struct {
 	Name      string
 	Arguments []Ast
@@ -115,9 +120,9 @@ type Assignment struct {
 }
 
 type RecordType struct {
-	Name         string
-	Fields       []RecordField
-	Constructors []Ast
+	Name   string
+	Fields []RecordField
+	Params []Ast
 }
 
 type VariantType struct {
@@ -135,6 +140,7 @@ type AliasType struct {
 type RecordField struct {
 	Name string
 	Type Ast
+	InferredType Type
 }
 
 type VariantConstructor struct {
@@ -147,16 +153,12 @@ type Return struct {
 	Value        Ast
 }
 
-type Extern struct {
+type ExternFunc struct {
 	Name             string
-	Import			 string
+	Import           string
 	Arguments        []Ast
 	InferredType     Type
 	ReturnAnnotation string
-}
-
-func (e Extern) GetInferredType() Type {
-	return e.InferredType
 }
 
 type Ast interface {
@@ -164,6 +166,24 @@ type Ast interface {
 	Print(indent int) string
 	Compile(state State) (string, State)
 	GetInferredType() Type
+}
+
+
+func (f RecordField) String() string {
+	return f.Name
+}
+
+func (f RecordField) GetInferredType() Type {
+	return f.InferredType
+}
+
+
+func (e ExternFunc) GetInferredType() Type {
+	return e.InferredType
+}
+
+func (a RecordAccess) GetInferredType() Type {
+	return a.InferredType
 }
 
 func (a BasicAst) String() string {
@@ -390,6 +410,28 @@ func (a ArrayType) String() string {
 		values = append(values, fmt.Sprint(el))
 	}
 	return "[" + strings.Join(values, ", ") + "]"
+}
+
+func (a RecordAccess) String() string {
+	var bits []string
+	for _, el := range a.Identifiers {
+		bits = append(bits, el.String())
+	}
+	return strings.Join(bits, ".")
+}
+
+func (a RecordAccess) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	var bits []string
+	for _, el := range a.Identifiers {
+		bits = append(bits, el.String())
+	}
+	str += strings.Join(bits, ".")
+	return str
 }
 
 func (m Module) Print(indent int) string {
@@ -719,11 +761,11 @@ func (c VariantConstructor) Print(indent int) string {
 	return str
 }
 
-func (e Extern) String() string {
+func (e ExternFunc) String() string {
 	return "external " + e.Name
 }
 
-func (e Extern) Print(indent int) string {
+func (e ExternFunc) Print(indent int) string {
 	str := ""
 
 	for i := 0; i < indent; i++ {

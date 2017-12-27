@@ -37,7 +37,8 @@ func (a BasicAst) Compile(state State) (string, State) {
 			return "true", state
 		}
 		return "false", state
-
+	case NIL:
+		return "nil", state
 	default:
 		return "", state
 	}
@@ -123,6 +124,16 @@ func (e Expr) Compile(state State) (string, State) {
 		}
 		return values, state
 	}
+}
+
+
+func (a RecordAccess) Compile(state State) (string, State) {
+	var bits []string
+	for _, el := range a.Identifiers {
+		bits = append(bits, el.String())
+	}
+	val := strings.Join(bits, ".")
+	return val, state
 }
 
 func (a Assignment) Compile(state State) (string, State) {
@@ -295,7 +306,7 @@ func (a RecordInstance) Compile(state State) (string, State) {
 		args := make([]string, 0)
 		for key, el := range a.Values {
 			val := ""
-			val += key + ": "
+			val += strings.Title(key) + ": "
 			value, s := el.Compile(state)
 			val += value
 			state = s
@@ -308,7 +319,7 @@ func (a RecordInstance) Compile(state State) (string, State) {
 	return result, state
 }
 
-func (e Extern) Compile(state State) (string, State) {
+func (e ExternFunc) Compile(state State) (string, State) {
 	// TODO: handle nested packages
 
 	path := strings.Split(e.Import, ".")
@@ -465,5 +476,5 @@ func (c VariantConstructor) Compile(state State) (string, State) {
 func (f RecordField) Compile(state State) (string, State) {
 	value, s := f.Type.Compile(state)
 	state = s
-	return f.Name + " " + value + "\n", state
+	return strings.Title(f.Name) + " " + value + "\n", state
 }

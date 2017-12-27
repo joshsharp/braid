@@ -44,13 +44,13 @@ Mod.add(5, 6);
 ### Type declarations
 
 ```
-type result ('a, 'b) = 
+type Result ('a, 'b) = 
 | OK 'a
 | Error 'b
 
-type myPayload = {data: string}
-type person = {age: int, name: string}
-type vaguePerson 'a = {name: string, extra: 'a}
+type MyPayload = {data: string}
+type Person = {age: int, name: string}
+type VaguePerson 'a = {name: string, extra: 'a}
 
 type people = list person
 type vaguePeople 'a = list vaguePerson 'a
@@ -74,6 +74,10 @@ type stringPeople string = list vaguePerson string
 [X] Type construction also
 [X] Separate AST structs out so not so many multi-use types
 [X] New `extern` rule
+[ ] `extern func`, `extern type` and `extern trait` rules
+[X] Parse record field lookups eg `person.name`
+[ ] Record and sum types need to handle `('a, 'b)` parentheses syntax
+[ ] `func` type
 
 ### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
@@ -88,12 +92,18 @@ type stringPeople string = list vaguePerson string
   [X] Last expression in a func needs `return` AST inserted with correct variable name etc
   [X] Allow comments at the end of lines
   [X] Handle type annotations in func defns
-  [X] Create stand-in Braid funcs for `extern`-ally imported funcs
+  [X] Create stand-in Braid funcs for `extern func` imported funcs
+  [ ] Create stand-in types for `extern type` external records
+  [ ] Create stand-in traits for `extern trait` external interfaces
   [X] Unify function call args with the function
+  [X] Infer record types
+  [ ] Infer variant types
   [ ] Make sure type variables get updated properly (prune function not working entirely?)
   [X] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
   [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
       `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() }`
+  [ ] `List thing` type implementation
+  
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
   
 
