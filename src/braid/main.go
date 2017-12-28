@@ -81,7 +81,11 @@ func printError(pe ast.ParserError, lines []string) {
 	// print the caret pointing to the position
 	line := lines[pe.Pos()[0]-1]
 	fmt.Printf("    ")
-	for _, el := range line[:pe.Pos()[1]-1] {
+	pos := pe.Pos()[1]
+	if pos > 0 {
+		pos--
+	}
+	for _, el := range line[:pos] {
 		if el == '\t' {
 			fmt.Printf("----")
 		} else {

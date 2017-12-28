@@ -95,6 +95,7 @@ type stringPeople string = list vaguePerson string
   [X] Create stand-in Braid funcs for `extern func` imported funcs
   [ ] Create stand-in types for `extern type` external records
   [ ] Create stand-in traits for `extern trait` external interfaces
+  [ ] Handle `package/package` paths in `extern` strings
   [X] Unify function call args with the function
   [X] Infer record types
   [ ] Infer variant types
