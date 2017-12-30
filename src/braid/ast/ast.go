@@ -125,6 +125,13 @@ type RecordType struct {
 	Params []Ast
 }
 
+type ExternRecordType struct {
+	Name   string
+	Import string
+	Fields []RecordField
+	Params []Ast
+}
+
 type VariantType struct {
 	Name         string
 	Params       []Ast
@@ -138,8 +145,8 @@ type AliasType struct {
 }
 
 type RecordField struct {
-	Name string
-	Type Ast
+	Name         string
+	Type         Ast
 	InferredType Type
 }
 
@@ -168,7 +175,6 @@ type Ast interface {
 	GetInferredType() Type
 }
 
-
 func (f RecordField) String() string {
 	return f.Name
 }
@@ -176,7 +182,6 @@ func (f RecordField) String() string {
 func (f RecordField) GetInferredType() Type {
 	return f.InferredType
 }
-
 
 func (e ExternFunc) GetInferredType() Type {
 	return e.InferredType

@@ -1,6 +1,8 @@
 module Main
 
-extern type ResponseWriter = "net/http.ResponseWriter"
+extern type ResponseWriter = "net/http.ResponseWriter" {
+    thing: string
+}
 
 extern type Request = "net/http.Request" {
     method: string

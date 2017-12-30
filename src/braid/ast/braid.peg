@@ -208,7 +208,7 @@ Module = _ "module" __N name:ModuleName __ stat:TopLevelStatement _ rest:(TopLev
     }
 }
 
-TopLevelStatement = FuncDefn / TypeDefn / ExternFunc
+TopLevelStatement = FuncDefn / TypeDefn / ExternFunc / ExternType
 
 Statement = FuncDefn / Assignment / ExprLine
 
@@ -230,6 +230,26 @@ ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:Stri
 
     return ExternFunc{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
         Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst).StringValue }, nil
+}
+
+ExternType = _ "extern" __N "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
+    _ importName:StringLiteral _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
+    // record type
+    fields := []RecordField{first.(RecordField)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+         restSl := toIfaceSlice(rest)
+         for _, v := range restSl {
+             // we can get each item in the grammar by index
+             restExpr := toIfaceSlice(v)
+             v := restExpr[2].(RecordField)
+             fields = append(fields, v)
+         }
+    }
+
+    return ExternRecordType{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
+        Fields: fields}, nil
 }
 
 TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
@@ -848,6 +868,6 @@ N "newline" = Comments / [ \r\t]* '\n'
 
 Comments = (Comment)+
 
-Comment = [ \r\n\t]* '#' (![\n] .)* &'\n'
+Comment = [ \r\n\t]* "//" (![\n] .)* &'\n' / [ \r\n\t]* "/*" (!"*/" .)* "*/" [\r]* '\n'
 
 EOF = !.

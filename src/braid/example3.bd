@@ -1,7 +1,7 @@
 module Main
 
 let add = (one, two) {
-	# one
+	// one
 	two ++ one
 }
 

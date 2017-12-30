@@ -74,7 +74,9 @@ type stringPeople string = list vaguePerson string
 [X] Type construction also
 [X] Separate AST structs out so not so many multi-use types
 [X] New `extern` rule
-[ ] `extern func`, `extern type` and `extern trait` rules
+[X] `extern func` 
+[X] `extern type` 
+[X] `extern trait`
 [X] Parse record field lookups eg `person.name`
 [ ] Record and sum types need to handle `('a, 'b)` parentheses syntax
 [ ] `func` type
@@ -96,6 +98,7 @@ type stringPeople string = list vaguePerson string
   [ ] Create stand-in types for `extern type` external records
   [ ] Create stand-in traits for `extern trait` external interfaces
   [ ] Handle `package/package` paths in `extern` strings
+  [ ] Handle looking up complex non-base types in annotations
   [X] Unify function call args with the function
   [X] Infer record types
   [ ] Infer variant types

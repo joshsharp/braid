@@ -14,10 +14,10 @@ let broken = {
 }
 
 let main = {
-	# one
+	// one
 	let a = 2.0 * 5.0 + number()
 	let f = broken() ++ "human"
-	# two
+	// two
 	let b = 3 * -2 + 20 > 5
 	let c = b
 	let d = [5, 6]
