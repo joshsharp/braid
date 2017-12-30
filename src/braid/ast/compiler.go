@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+func GetImportPath(imprt string) string {
+	pathParts := strings.Split(imprt, ".")
+	return pathParts[0]
+}
+
 func (m Module) Compile(state State) (string, State) {
 	values := fmt.Sprintf("package %s\n\n", strings.ToLower(m.Name))
 	for _, el := range m.Subvalues {
@@ -319,11 +324,26 @@ func (a RecordInstance) Compile(state State) (string, State) {
 	return result, state
 }
 
+func (e ExternRecordType) Compile(state State) (string, State) {
+	str := ""
+	path := GetImportPath(e.Import)
+	name := "__go_" + path
+
+	if _, ok := state.Imports[name]; ok {
+		return "", state
+	}
+
+	state.Imports[name] = true
+	str += fmt.Sprintf("import %s \"%s\"\n", name, path[0])
+	return str, state
+
+}
+
 func (e ExternFunc) Compile(state State) (string, State) {
 	// TODO: handle nested packages
 
-	path := strings.Split(e.Import, ".")
-	name := "__go_" + path[0]
+	path := GetImportPath(e.Import)
+	name := "__go_" + path
 
 	if _, ok := state.Imports[name]; ok {
 		return "", state

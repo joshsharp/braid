@@ -232,8 +232,8 @@ ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:Stri
         Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst).StringValue }, nil
 }
 
-ExternType = _ "extern" __N "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
-    _ importName:StringLiteral _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
+ExternType = _ "extern" __N "type" __ name:ModuleName _ '=' _
+    importName:StringLiteral _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
     // record type
     fields := []RecordField{first.(RecordField)}
 
@@ -251,8 +251,17 @@ ExternType = _ "extern" __N "type" __ name:ModuleName params:(__ TypeParameter)*
     return ExternRecordType{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
         Fields: fields}, nil
 }
+/
+_ "extern" __N "type" __ name:ModuleName _ '=' _
+    importName:StringLiteral __ {
+    // record type
+    fields := []RecordField{}
 
-TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ AnyType)+ __ {
+    return ExternRecordType{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
+        Fields: fields}, nil
+}
+
+TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ TypeAnnotation)+ __ {
     // alias type
     parameters := []Ast{}
     fields := []Ast{}
@@ -305,7 +314,7 @@ _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _ rest:(VariantCons
     return VariantType{Name: name.(Identifier).StringValue, Params: parameters, Constructors: constructors}, nil
 }
 
-RecordFieldDefn = name:VariableName _ ':' _ t:(AnyType) {
+RecordFieldDefn = name:VariableName _ ':' _ t:(TypeAnnotation) {
     return RecordField{Name: name.(Identifier).StringValue, Type: t.(Ast)}, nil
 }
 
@@ -328,7 +337,7 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
     return VariantConstructor{Name: name.(Identifier).StringValue, Fields: []Ast{record}}, nil
 }
 /
-'|' _ name:ModuleName rest:(__ AnyType)* _ {
+'|' _ name:ModuleName rest:(__ TypeAnnotation)* _ {
     params := []Ast{}
 
     vals := rest.([]interface{})
@@ -345,8 +354,6 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
     return VariantConstructor{Name: name.(Identifier).StringValue, Fields: params}, nil
 }
 
-AnyType = BaseType / TypeParameter
-
 Assignment = _ "let" __N i:Assignable _N '=' _N expr:Expr N {
     //fmt.Println("assignment:", string(c.text))
 
@@ -361,7 +368,7 @@ _ "let" __N i:Assignable _N !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
-FuncDefn = _ "let" __N i:VariableName _N '=' _N ids:(ArgsDefn _)? ret:(AnyType _)? '{' __ statements:(Statement)+ _ '}' _ {
+FuncDefn = _ "let" __N i:VariableName _N '=' _N ids:(ArgsDefn _)? ret:(TypeAnnotation _)? '{' __ statements:(Statement)+ _ '}' _ {
     //fmt.Println(string(c.text))
     subvalues := []Ast{}
     vals := statements.([]interface{})
@@ -506,7 +513,7 @@ ArgsDefn = '(' _ argument:ArgDefn _ rest:(',' _ ArgDefn)* _ ')' {
     return Container{Type: "Arguments", Subvalues: args}, nil
 }
 
-ArgDefn = name:Identifier _ anno:(':' _ AnyType )? _ {
+ArgDefn = name:Identifier _ anno:(':' _ TypeAnnotation )? _ {
     //fmt.Println("parsing arg:", string(c.text))
     arg := name.(Identifier)
 
@@ -525,6 +532,10 @@ ArgDefn = name:Identifier _ anno:(':' _ AnyType )? _ {
     //fmt.Println("parsed:", arg)
     return arg, nil
 }
+
+TypeAnnotation = AnyType / ModuleName
+
+AnyType = BaseType / TypeParameter
 
 Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
     args := []Ast{argument.(Ast)}

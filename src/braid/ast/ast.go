@@ -191,6 +191,10 @@ func (a RecordAccess) GetInferredType() Type {
 	return a.InferredType
 }
 
+func (a ExternRecordType) GetInferredType() Type {
+	return Unit
+}
+
 func (a BasicAst) String() string {
 	switch (a.ValueType) {
 	case STRING:
@@ -719,6 +723,22 @@ func (t RecordType) Print(indent int) string {
 		str += "  "
 	}
 	str += "Type Record:\n"
+
+	return str
+}
+
+func (t ExternRecordType) String() string {
+	return "ExternRecord " + t.Import
+
+}
+
+func (t ExternRecordType) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "Type ExternRecord: " + t.Import + "\n"
 
 	return str
 }
