@@ -226,10 +226,11 @@ ExprLine = e:Expr N {
     return e, nil
 }
 
-ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn _N ret:BaseType {
+ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn
+    _N "->" _N ret:BaseType {
 
     return ExternFunc{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
-        Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst).StringValue }, nil
+        Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst) }, nil
 }
 
 ExternType = _ "extern" __N "type" __ name:ModuleName _ '=' _
@@ -368,7 +369,7 @@ _ "let" __N i:Assignable _N !'=' {
     return nil, errors.New("When assigning a value to a variable, you must use '='")
 }
 
-FuncDefn = _ "let" __N i:VariableName _N '=' _N ids:(ArgsDefn _)? ret:(TypeAnnotation _)? '{' __ statements:(Statement)+ _ '}' _ {
+FuncDefn = _ "let" __N i:VariableName _N '=' _N ids:(ArgsDefn _)? ret:(_ "->" _ TypeAnnotation _)? '{' __ statements:(Statement)+ _ '}' _ {
     //fmt.Println(string(c.text))
     subvalues := []Ast{}
     vals := statements.([]interface{})
@@ -385,10 +386,10 @@ FuncDefn = _ "let" __N i:VariableName _N '=' _N ids:(ArgsDefn _)? ret:(TypeAnnot
         args = vals[0].(Container).Subvalues
     }
 
-    retType := ""
+    var retType Ast
     if ret != nil {
         vals = ret.([]interface{})
-        retType = vals[0].(BasicAst).StringValue
+        retType = vals[3].(Ast)
     }
 
     return Func{Name: i.(Identifier).StringValue, Arguments: args, Subvalues: subvalues, ReturnAnnotation: retType }, nil
@@ -522,18 +523,27 @@ ArgDefn = name:Identifier _ anno:(':' _ TypeAnnotation )? _ {
         //fmt.Println(vals)
         //restSl := toIfaceSlice(vals[0])
 
-        switch vals[2].(type) {
-        case BasicAst:
-            arg.Annotation = vals[2].(BasicAst).StringValue
-        case Identifier:
-            arg.Annotation = vals[2].(Identifier).StringValue
-        }
+        //switch vals[2].(type) {
+        //case BasicAst:
+        //    arg.Annotation = vals[2].(BasicAst).StringValue
+        //case Identifier:
+        //    arg.Annotation = vals[2].(Identifier).StringValue
+        //}
+        arg.Annotation = vals[2].(Ast)
     }
     //fmt.Println("parsed:", arg)
     return arg, nil
 }
 
-TypeAnnotation = AnyType / ModuleName
+TypeAnnotation = AnyType / ModuleName /
+"func" _N args:ArgsDefn _ "->" _ ret:TypeAnnotation {
+    // TODO: return correct func type annotation
+    vals := args.(Container)
+    vals.Subvalues = append(vals.Subvalues, ret.(Ast))
+    vals.Type = "FuncAnnotation"    
+    
+    return vals, nil
+}
 
 AnyType = BaseType / TypeParameter
 
@@ -850,7 +860,7 @@ Unused = ('_') {
 
 Reserved = ("let" / "if" / "else" / "extern" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
 
-BaseType = ( "int64" / "int" / "bool" / "string" / "byte" / "rune" / "float" / "()" / "func" ) {
+BaseType = ( "int64" / "int" / "bool" / "string" / "byte" / "rune" / "float" / "()" ) {
     return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
 }
 / Unit

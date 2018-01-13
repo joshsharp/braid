@@ -82,6 +82,14 @@ type State struct {
 	Imports       map[string]bool
 }
 
+func (f Function) String() string {
+	str := f.Name + ":\n"
+	for _, el := range f.Types {
+		str += fmt.Sprintf("\t%s\n", el)
+	}
+	return str
+}
+
 func (t TypeVariable) GetName() string {
 	return t.Name
 }
@@ -186,6 +194,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		//node.InferredType = Unit
 		return node, nil
+
 	case ExternFunc:
 		node := node.(ExternFunc)
 
@@ -197,7 +206,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			for _, el := range node.Arguments {
 				// lookup the type from its annotation
 				//fmt.Println("looking up arg type annotation:", el.(Identifier).Annotation)
-				anno, err := GetTypeFromAnnotation(el.(Identifier).Annotation)
+				anno, err := GetTypeFromAnnotation(el.(Identifier).Annotation, env)
 				if err != nil {
 					return nil, err
 				}
@@ -207,7 +216,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		// lookup return type annotation
 		//fmt.Println("looking up return type annotation:", node.ReturnAnnotation)
-		anno, err := GetTypeFromAnnotation(node.ReturnAnnotation)
+		anno, err := GetTypeFromAnnotation(node.ReturnAnnotation, env)
 		if err != nil {
 			return nil, err
 		}
@@ -655,8 +664,8 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			for _, el := range node.Arguments {
 				newType := NewTypeVariable()
 				newEnv.Env[el.(Identifier).StringValue] = newType
-				if el.(Identifier).Annotation != "" {
-					t, err := GetTypeFromAnnotation(el.(Identifier).Annotation)
+				if el.(Identifier).Annotation != nil {
+					t, err := GetTypeFromAnnotation(el.(Identifier).Annotation, env)
 					if err != nil {
 						return nil, InferenceError{fmt.Sprintf("Cannot understand type annotation %s: %s",
 							el.(Identifier).StringValue,
@@ -807,12 +816,13 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		var err error
 		switch node.Type.(type) {
 		case BasicAst:
-			t, err = GetTypeFromAnnotation(node.Type.(BasicAst).StringValue)
+			t, err = GetTypeFromAnnotation(node.Type.(BasicAst), env)
 		case Identifier:
-			t, err = GetTypeFromAnnotation(node.Type.(Identifier).StringValue)
-
+			t, err = GetTypeFromAnnotation(node.Type.(Identifier), env)
+		case Container:
+			t, err = GetTypeFromAnnotation(node.Type.(Container), env)
 		default:
-			t, err = GetTypeFromAnnotation(node.Type.String())
+			panic(fmt.Sprintf("Do not know this type %s", node.Type))
 		}
 
 		if err != nil {
@@ -843,6 +853,25 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		env.Env[node.Name] = Record{Name:node.Name, Params:params, Fields: fields}
 		return node, nil
+	case ExternRecordType:
+		node := node.(ExternRecordType)
+		for i, el := range node.Fields{
+			field, err := Infer(el, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
+			node.Fields[i] = field.(RecordField)
+		}
+
+		var params []string
+
+		fields := make(map[string]Type)
+		for _, p := range node.Fields {
+			fields[p.Name] = p.InferredType
+		}
+
+		env.Env[node.Name] = Record{Name:node.Name, Params:params, Fields: fields}
+		return node, nil
 	default:
 		panic("Don't know this type: " + node.String())
 	}
@@ -850,7 +879,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	return nil, InferenceError{"Don't know this type: " + node.String()}
 }
 
-func GetTypeFromAnnotation(name string) (Type, error) {
+func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 	types := make(map[string]Type)
 	types["int64"] = Integer
 	types["float64"] = Float
@@ -859,9 +888,43 @@ func GetTypeFromAnnotation(name string) (Type, error) {
 	types["bool"] = Boolean
 	types["()"] = Unit
 
-	if val, ok := types[name]; ok {
-		return val, nil
-	}
+	switch name.(type){
+		case BasicAst:
+			tName := name.(BasicAst).StringValue
+			if val, ok := types[tName]; ok {
+				return val, nil
+			}
+		
+			if val, ok := env.Env[tName]; ok {
+				return val, nil
+			}
+		case Identifier:
+			tName := name.(Identifier).StringValue
+			if val, ok := types[tName]; ok {
+				return val, nil
+			}
+		
+			if val, ok := env.Env[tName]; ok {
+				return val, nil
+			}
+		case Container:
+			// containers are a list of types for a func (last one is return type)
+			// we need to make sure each type in here matches too
+			c := name.(Container)
+			if (c.Type == "FuncAnnotation"){
+				var types []Type
+				for _, el := range c.Subvalues {
+					t, err := GetTypeFromAnnotation(el, env)
+					if err != nil {
+						return nil, err
+					}
+					types = append(types, t)
+				}
+								
+				return Function{Name: NewTempVariable(), Types: types }, nil
+			}
+	}	
+	
 	return nil, InferenceError{fmt.Sprintf("Do not know annotated type '%s'", name)}
 }
 
@@ -937,8 +1000,28 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			}
 			return nil
 		}
+	case Function:
+		switch b.(type) {
+		case Function:
+			aTypeLen := len(a.(Function).Types)
+			bTypeLen := len(b.(Function).Types)
+			if aTypeLen != bTypeLen {
+				return InferenceError{fmt.Sprintf("Type mismatch: %s != %s", a.GetName(), b.GetName())}
+			}
+			// we know that the types must match because they didn't pass into that last condition
+			for i, el := range a.(Function).Types {
+				err := Unify(&el, &b.(Function).Types[i], env)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}
 	}
-	return InferenceError{fmt.Sprintf("Types not unified: %s and %s", a, b)}
+	
+	// TODO: unify function types
+	
+	return InferenceError{fmt.Sprintf("Types not unified:\n%s\n\n%s", a, b)}
 }
 
 func Prune(t Type) Type {

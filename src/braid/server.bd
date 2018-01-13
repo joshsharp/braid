@@ -6,11 +6,11 @@ extern type Request = "net/http.Request" {
     method: string
 }
 
-extern func fprintf = "fmt.Fprintf" (writer: ResponseWriter, str: string) ()
-extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func) ()
-extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) ()
+extern func fprintf = "fmt.Fprintf" (writer: ResponseWriter, str: string) -> ()
+extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(ResponseWriter, Request)->()) -> ()
+extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
 
-let hello = (w: ResponseWriter, request: Request)(){
+let hello = (w: ResponseWriter, request: Request) -> (){
     fprintf(w, "Hello world!")
 }
 

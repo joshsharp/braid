@@ -5,8 +5,8 @@ type Payload = {
     data: string,
 }
 
-extern func println = "fmt.Println" (s: string) ()
-extern func printf1 = "fmt.Printf" (s: string, arg1:string) ()
+extern func println = "fmt.Println" (s: string) -> ()
+extern func printf1 = "fmt.Printf" (s: string, arg1:string) -> ()
 
 /* func to add cheesiness
    to any two items */

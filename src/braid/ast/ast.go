@@ -45,7 +45,7 @@ type Comment struct {
 
 type Identifier struct {
 	StringValue  string
-	Annotation   string
+	Annotation   Ast
 	InferredType Type
 }
 
@@ -79,7 +79,7 @@ type Func struct {
 	Arguments        []Ast
 	Subvalues        []Ast
 	InferredType     Type
-	ReturnAnnotation string
+	ReturnAnnotation Ast
 }
 
 type Call struct {
@@ -165,7 +165,7 @@ type ExternFunc struct {
 	Import           string
 	Arguments        []Ast
 	InferredType     Type
-	ReturnAnnotation string
+	ReturnAnnotation Ast
 }
 
 type Ast interface {
