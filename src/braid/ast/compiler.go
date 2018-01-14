@@ -10,6 +10,11 @@ func GetImportPath(imprt string) string {
 	return pathParts[0]
 }
 
+func StripImportPath(extern string) string {
+	pathParts := strings.Split(extern, "/")
+	return pathParts[len(pathParts)-1]
+}
+
 func (m Module) Compile(state State) (string, State) {
 	values := fmt.Sprintf("package %s\n\n", strings.ToLower(m.Name))
 	for _, el := range m.Subvalues {
@@ -130,7 +135,6 @@ func (e Expr) Compile(state State) (string, State) {
 		return values, state
 	}
 }
-
 
 func (a RecordAccess) Compile(state State) (string, State) {
 	var bits []string
@@ -265,8 +269,7 @@ func (b BinOp) Compile(state State) (string, State) {
 func (a Call) Compile(state State) (string, State) {
 	result := ""
 	if a.Module.StringValue != "" {
-		value, s := a.Module.Compile(state)
-		state = s
+		value := StripImportPath(a.Module.StringValue)
 		result += value + "."
 	}
 	value, s := a.Function.Compile(state)
@@ -327,14 +330,14 @@ func (a RecordInstance) Compile(state State) (string, State) {
 func (e ExternRecordType) Compile(state State) (string, State) {
 	str := ""
 	path := GetImportPath(e.Import)
-	name := "__go_" + path
+	name := "__go_" + StripImportPath(path)
 
 	if _, ok := state.Imports[name]; ok {
 		return "", state
 	}
 
 	state.Imports[name] = true
-	str += fmt.Sprintf("import %s \"%s\"\n", name, path[0])
+	str += fmt.Sprintf("import %s \"%s\"\n", name, path)
 	return str, state
 
 }
@@ -343,7 +346,7 @@ func (e ExternFunc) Compile(state State) (string, State) {
 	// TODO: handle nested packages
 
 	path := GetImportPath(e.Import)
-	name := "__go_" + path
+	name := "__go_" + StripImportPath(path)
 
 	if _, ok := state.Imports[name]; ok {
 		return "", state
@@ -355,8 +358,8 @@ func (e ExternFunc) Compile(state State) (string, State) {
 	//if _, ok := state.UsedVariables[e.Name]; !ok {
 	//	return fmt.Sprintf("import _ \"%s\"\n", path[0]), state
 	//} else {
-		state.UsedVariables[e.Name] = true
-		return fmt.Sprintf("import %s \"%s\"\n", name, path[0]), state
+	state.UsedVariables[e.Name] = true
+	return fmt.Sprintf("import %s \"%s\"\n", name, path), state
 	//}
 }
 
@@ -481,7 +484,7 @@ func (v VariantType) Compile(state State) (string, State) {
 func (c VariantConstructor) Compile(state State) (string, State) {
 	str := "type " + c.Name + " struct {\n"
 	for i, el := range c.Fields {
-		value, s:= el.Compile(state)
+		value, s := el.Compile(state)
 		state = s
 		str += fmt.Sprintf("\tF%d", i) + " " + value
 	}

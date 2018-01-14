@@ -244,6 +244,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		case STRING:
 			node.InferredType = String
 			return node, nil
+		case NIL:
+			node.InferredType = Unit
+			return node, nil
 		}
 
 	case Operator:
@@ -833,7 +836,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 	case RecordType:
 		node := node.(RecordType)
-		for i, el := range node.Fields{
+		for i, el := range node.Fields {
 			field, err := Infer(el, env, nonGeneric)
 			if err != nil {
 				return nil, err
@@ -851,11 +854,11 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			fields[p.Name] = p.InferredType
 		}
 
-		env.Env[node.Name] = Record{Name:node.Name, Params:params, Fields: fields}
+		env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
 		return node, nil
 	case ExternRecordType:
 		node := node.(ExternRecordType)
-		for i, el := range node.Fields{
+		for i, el := range node.Fields {
 			field, err := Infer(el, env, nonGeneric)
 			if err != nil {
 				return nil, err
@@ -870,7 +873,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			fields[p.Name] = p.InferredType
 		}
 
-		env.Env[node.Name] = Record{Name:node.Name, Params:params, Fields: fields}
+		env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
 		return node, nil
 	default:
 		panic("Don't know this type: " + node.String())
@@ -888,43 +891,43 @@ func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 	types["bool"] = Boolean
 	types["()"] = Unit
 
-	switch name.(type){
-		case BasicAst:
-			tName := name.(BasicAst).StringValue
-			if val, ok := types[tName]; ok {
-				return val, nil
-			}
-		
-			if val, ok := env.Env[tName]; ok {
-				return val, nil
-			}
-		case Identifier:
-			tName := name.(Identifier).StringValue
-			if val, ok := types[tName]; ok {
-				return val, nil
-			}
-		
-			if val, ok := env.Env[tName]; ok {
-				return val, nil
-			}
-		case Container:
-			// containers are a list of types for a func (last one is return type)
-			// we need to make sure each type in here matches too
-			c := name.(Container)
-			if (c.Type == "FuncAnnotation"){
-				var types []Type
-				for _, el := range c.Subvalues {
-					t, err := GetTypeFromAnnotation(el, env)
-					if err != nil {
-						return nil, err
-					}
-					types = append(types, t)
+	switch name.(type) {
+	case BasicAst:
+		tName := name.(BasicAst).StringValue
+		if val, ok := types[tName]; ok {
+			return val, nil
+		}
+
+		if val, ok := env.Env[tName]; ok {
+			return val, nil
+		}
+	case Identifier:
+		tName := name.(Identifier).StringValue
+		if val, ok := types[tName]; ok {
+			return val, nil
+		}
+
+		if val, ok := env.Env[tName]; ok {
+			return val, nil
+		}
+	case Container:
+		// containers are a list of types for a func (last one is return type)
+		// we need to make sure each type in here matches too
+		c := name.(Container)
+		if c.Type == "FuncAnnotation" {
+			var types []Type
+			for _, el := range c.Subvalues {
+				t, err := GetTypeFromAnnotation(el, env)
+				if err != nil {
+					return nil, err
 				}
-								
-				return Function{Name: NewTempVariable(), Types: types }, nil
+				types = append(types, t)
 			}
-	}	
-	
+
+			return Function{Name: NewTempVariable(), Types: types}, nil
+		}
+	}
+
 	return nil, InferenceError{fmt.Sprintf("Do not know annotated type '%s'", name)}
 }
 
@@ -1006,7 +1009,7 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			aTypeLen := len(a.(Function).Types)
 			bTypeLen := len(b.(Function).Types)
 			if aTypeLen != bTypeLen {
-				return InferenceError{fmt.Sprintf("Type mismatch: %s != %s", a.GetName(), b.GetName())}
+				return InferenceError{fmt.Sprintf("Type mismatch: %s != %s (different number of arguments)", a.GetName(), b.GetName())}
 			}
 			// we know that the types must match because they didn't pass into that last condition
 			for i, el := range a.(Function).Types {
@@ -1017,11 +1020,30 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			}
 			return nil
 		}
+	case Record:
+		switch b.(type) {
+		case Record:
+			aFieldLen := len(a.(Record).Fields)
+			bFieldLen := len(b.(Record).Fields)
+			if aFieldLen != bFieldLen {
+				return InferenceError{fmt.Sprintf("Type mismatch: %s != %s (different number of fields)", a.GetName(), b.GetName())}
+			}
+
+			for i, el := range a.(Record).Fields {
+				field := b.(Record).Fields[i]
+				err := Unify(&el, &field, env)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}
 	}
-	
-	// TODO: unify function types
-	
-	return InferenceError{fmt.Sprintf("Types not unified:\n%s\n\n%s", a, b)}
+
+	// TODO: unify record types
+
+	return InferenceError{fmt.Sprintf("No match for these types, not unified:\n%s\n\n%s", a, b)}
 }
 
 func Prune(t Type) Type {
