@@ -1,14 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"strings"
 	"braid/ast"
-	"os"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 )
 
+// takes raw Braid code and returns valid Go code.
 func Compile(input string) (string, error) {
 	lines := strings.Split(input, "\n")
 
@@ -28,40 +29,38 @@ func Compile(input string) (string, error) {
 			printError(pe, lines)
 		}
 		return "", err
-	} else {
-		// print the input
-		for i, el := range lines {
-			fmt.Printf("%03d|%s\n", i+1, el)
-		}
-
-		// print the ast
-		a := result.(ast.Ast)
-		//fmt.Println("=", a.Print(0))
-
-		env := ast.State{Env:make(map[string]ast.Type), UsedVariables:make(map[string]bool),
-			Imports:make(map[string]bool),
-		}
-
-		// infer types for the ast
-		typedAst, err := ast.Infer(a, &env, nil)
-		if err != nil {
-			fmt.Println(err.Error())
-			return "", err
-		}
-
-		fmt.Println("=", typedAst.Print(0))
-
-		output, _ := json.MarshalIndent(env, "", "  ")
-		fmt.Println(string(output))
-
-		// print the compiled Go
-		result, env := typedAst.Compile(env)
-		//fmt.Println(result)
-		return result, nil
+	}
+	// print the input
+	for i, el := range lines {
+		fmt.Printf("%03d|%s\n", i+1, el)
 	}
 
-}
+	// print the ast
+	a := result.(ast.Ast)
+	//fmt.Println("=", a.Print(0))
 
+	env := ast.State{Env: make(map[string]ast.Type), UsedVariables: make(map[string]bool),
+		Imports: make(map[string]bool),
+	}
+
+	// infer types for the ast
+	typedAst, err := ast.Infer(a, &env, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	fmt.Println("=", typedAst.Print(0))
+
+	output, _ := json.MarshalIndent(env, "", "  ")
+	fmt.Println(string(output))
+
+	// print the compiled Go
+	compiled, env := typedAst.Compile(env)
+	//fmt.Println(result)
+	return compiled, nil
+
+}
 
 func printError(pe ast.ParserError, lines []string) {
 
@@ -98,7 +97,6 @@ func printError(pe ast.ParserError, lines []string) {
 	fmt.Printf("Line %d, character %d: ", pe.Pos()[0], pe.Pos()[1])
 	fmt.Println(pe.InnerError())
 }
-
 
 func main() {
 	args := os.Args[1:]

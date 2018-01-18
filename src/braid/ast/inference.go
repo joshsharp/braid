@@ -199,7 +199,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		node := node.(ExternFunc)
 
 		// make our function type
-		fType := Function{Name: node.Name, External: "__go_" + node.Import, Types: []Type{}}
+		fType := Function{Name: node.Name, External: "__go_" + StripImportPath(node.Import), Types: []Type{}}
 
 		// grab inferred types of args
 		if len(node.Arguments) > 0 {

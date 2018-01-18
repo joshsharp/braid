@@ -79,7 +79,9 @@ type stringPeople string = list vaguePerson string
 [X] `extern trait`
 [X] Parse record field lookups eg `person.name`
 [ ] Record and sum types need to handle `('a, 'b)` parentheses syntax
-[ ] `func` type
+[X] `func` type
+[ ] Make concrete types for func args if annotated but not used
+[ ] Make annotation type that means extern pointer type `*`
 
 ### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
@@ -98,7 +100,8 @@ type stringPeople string = list vaguePerson string
   [X] Create stand-in types for `extern type` external records
   [ ] Create stand-in traits for `extern trait` external interfaces
   [X] Handle `package/package` paths in `extern` strings
-  [ ] Handle looking up complex non-base types in annotations
+  [X] Handle looking up complex non-base types in annotations
+  [ ] Make sure external func calls are called with correct package names
   [X] Unify function call args with the function
   [X] Infer record types
   [ ] Infer variant types
@@ -107,6 +110,10 @@ type stringPeople string = list vaguePerson string
   [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
       `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() }`
   [ ] `List thing` type implementation
+  [X] If return is nil, omit it (Go can't return nil)
+  [ ] External types in annotations, etc., need their package prefix
+  [ ] Compile extern pointer type to `*Thing`
+  [X] Make sure imports always come before everything else
   
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
   

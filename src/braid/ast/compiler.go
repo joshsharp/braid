@@ -5,11 +5,24 @@ import (
 	"strings"
 )
 
+// Removes the type and returns just the import path.
 func GetImportPath(imprt string) string {
 	pathParts := strings.Split(imprt, ".")
 	return pathParts[0]
 }
 
+// Removes the import path so we are left with only the imported type.
+func GetTypeFromImport(imprt string) string {
+	pathParts := strings.Split(imprt, ".")
+	if len(pathParts) > 1 {
+		return pathParts[len(pathParts)-1]
+	} else {
+		panic("Cannot parse this import string")
+	}
+}
+
+// Strips the slashy bits so that we have just the final `package.type`
+// or `package.func`.
 func StripImportPath(extern string) string {
 	pathParts := strings.Split(extern, "/")
 	return pathParts[len(pathParts)-1]
@@ -22,7 +35,36 @@ func (m Module) Compile(state State) (string, State) {
 		values += value
 		state = s
 	}
-	return values, state
+
+	// super-hacky method to make sure imports go above types
+	// we split lines, look for `import` lines, remove them
+	// then insert them again right below the package statement
+	// I apologise to future generations.
+	lines := strings.Split(values, "\n")
+
+	importLinePos := make([]int, 0)
+
+	for i, line := range lines {
+		if strings.Index(line, "import") == 0 {
+			importLinePos = append(importLinePos, i)
+		}
+	}
+	if len(importLinePos) > 0 {
+		importLines := []string{}
+		for _, el := range importLinePos {
+			importLines = append(importLines, lines[el])
+			lines[el] = ""
+		}
+		for _, el := range importLines {
+			lines = append(lines[:2], append([]string{el}, lines[2:]...)...)
+
+		}
+
+	}
+	// having rearranged, we make our final string again
+	final := strings.Join(lines, "\n")
+
+	return final, state
 }
 
 func (a BasicAst) Compile(state State) (string, State) {
@@ -52,7 +94,6 @@ func (a BasicAst) Compile(state State) (string, State) {
 	default:
 		return "", state
 	}
-	return "", state
 }
 
 func (o Operator) Compile(state State) (string, State) {
@@ -195,6 +236,9 @@ func (a Assignment) Compile(state State) (string, State) {
 func (r Return) Compile(state State) (string, State) {
 	result := "\nreturn "
 	value, s := r.Value.Compile(state)
+	if value == "nil\n" {
+		return "", state
+	}
 	result += value
 	state = s
 
@@ -269,7 +313,7 @@ func (b BinOp) Compile(state State) (string, State) {
 func (a Call) Compile(state State) (string, State) {
 	result := ""
 	if a.Module.StringValue != "" {
-		value := StripImportPath(a.Module.StringValue)
+		value := a.Module.StringValue // StripImportPath(
 		result += value + "."
 	}
 	value, s := a.Function.Compile(state)
@@ -332,12 +376,13 @@ func (e ExternRecordType) Compile(state State) (string, State) {
 	path := GetImportPath(e.Import)
 	name := "__go_" + StripImportPath(path)
 
-	if _, ok := state.Imports[name]; ok {
-		return "", state
+	if _, ok := state.Imports[name]; !ok {
+		state.Imports[name] = true
+		str += fmt.Sprintf("import %s \"%s\"\n", name, path)
 	}
 
-	state.Imports[name] = true
-	str += fmt.Sprintf("import %s \"%s\"\n", name, path)
+	str += fmt.Sprintf("type %s = %s.%s\n", e.Name, name, GetTypeFromImport(e.Import))
+
 	return str, state
 
 }

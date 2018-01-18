@@ -1,17 +1,17 @@
 module Main
 
 extern type ResponseWriter = "net/http.ResponseWriter"
-
-extern type Request = "net/http.Request" {
-    method: string
-}
+extern type Request = "net/http.Request"
 
 extern func fprintf = "fmt.Fprintf" (writer: ResponseWriter, str: string) -> ()
+extern func println = "fmt.Println" (r: Request) -> ()
 extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(ResponseWriter, Request)->()) -> ()
 extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
 
 let hello = (w: ResponseWriter, request: Request) -> (){
     fprintf(w, "Hello world!")
+    println(request)
+    ()
 }
 
 let main = {
