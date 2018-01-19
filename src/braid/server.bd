@@ -10,8 +10,8 @@ extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler
 
 let hello = (w, request) -> (){
     fprintf(w, "Hello world!")
-    println(request)
-    ()
+    //println(request)
+    //()
 }
 
 let main = {
