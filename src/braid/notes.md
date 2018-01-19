@@ -64,8 +64,9 @@ type stringPeople string = list vaguePerson string
 [X] Parse record field lookups eg `person.name`
 [ ] Record and sum types need to handle `('a, 'b)` parentheses syntax
 [X] `func` type
-[ ] Make concrete types for func args if annotated but not used
+[X] Make concrete types for func args if annotated but not used
 [X] Handle extern pointer type `*` (doing this with `*` prefix in import path)
+
 
 ### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
@@ -94,18 +95,21 @@ type stringPeople string = list vaguePerson string
   [ ] Ifs as expressions might need to be compiled to anonymous functions like so:
       `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() }`
   [ ] `List thing` type implementation
-  [X] If return is nil, omit it (Go can't return nil)
+  [X] If return is explicit nil, omit it (Go can't return nil)
+  [X] If return is implicit nil (eg. result of a call), omit it
   [X] External types in annotations, etc., need their package prefix
   [X] Compile extern pointer type to `*Thing` (using type aliases to do this)
   [X] Make sure imports always come before everything else
+  [ ] Unify return type and return type annotation
   
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
-  
+
 
 ### Generating source
-  [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
-  [ ] Generate concrete types etc (monomorphise) based on args when called
-  [X] `main` needs to either not have a return type, or be renamed and wrapped in another `main`
+[ ] Do we need another pass, after inference, that removes unused code, fixes returns, etc.?
+[X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
+[ ] Generate concrete types etc (monomorphise) based on args when called
+[X] `main` needs to either not have a return type, or be renamed and wrapped in another `main`
   
 ### Later
 [X] 'Module' rule
@@ -116,7 +120,7 @@ type stringPeople string = list vaguePerson string
 [X] Function annotations as a way of both typing a function and of specifying an external function?
 [ ] Work out module signatures. Maybe like Elm: `module Main exposing (func1, func2)`
 [ ] Work out typeclasses - Elm example https://medium.com/@eeue56/why-type-classes-arent-important-in-elm-yet-dd55be125c81
-[ ] We need a way of defining function signatures. OCaml has interface files, Rust has inline types, 
+[X] We need a way of defining function signatures. OCaml has interface files, Rust has inline types, 
     Haskell/Elm define on the line above. Can't leave it to H-M, need option of explicit typing. Annotations?
 [ ] Exposed functions need to be uppercased
 [X] Calls to external functions need to be uppercased

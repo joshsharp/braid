@@ -676,6 +676,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 					}
 
 					Unify(&t, &newType, &newEnv)
+					newEnv.Env[el.(Identifier).StringValue] = t
 				}
 			}
 		}
@@ -710,9 +711,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 				} else {
 					lastType = t.GetInferredType()
 					// if last, replace with its equivalent return
-					if i == len(statements)-1 && node.Name != "main" {
+					if i == len(statements)-1 && lastType.GetName() != Unit.GetName() && node.Name != "main" {
 						returnAst := Return{Value: t}
 						newStatements = append(newStatements, returnAst)
+
 					} else {
 						newStatements = append(newStatements, t)
 					}
