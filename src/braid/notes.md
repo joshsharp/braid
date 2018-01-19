@@ -65,7 +65,7 @@ type stringPeople string = list vaguePerson string
 [ ] Record and sum types need to handle `('a, 'b)` parentheses syntax
 [X] `func` type
 [ ] Make concrete types for func args if annotated but not used
-[ ] Make annotation type that means extern pointer type `*`
+[X] Handle extern pointer type `*` (doing this with `*` prefix in import path)
 
 ### Compiling
 [X] Hindley-Milner type inference, so we can predict errors and map function 
@@ -95,8 +95,8 @@ type stringPeople string = list vaguePerson string
       `a := []string{"one","two", func() string{ if true { return "yes" } else { return "no" } }() }`
   [ ] `List thing` type implementation
   [X] If return is nil, omit it (Go can't return nil)
-  [ ] External types in annotations, etc., need their package prefix
-  [ ] Compile extern pointer type to `*Thing`
+  [X] External types in annotations, etc., need their package prefix
+  [X] Compile extern pointer type to `*Thing` (using type aliases to do this)
   [X] Make sure imports always come before everything else
   
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
