@@ -5,29 +5,13 @@ All the power of the Go platform (static binaries, concurrency, fast and fast GC
 a higher-level syntax. Braid's higher-level abstractions may result in more code
 and slower speeds than the representative native Go code, but this tradeoff is explicitly made.
  
-## What sort of stuff can you do in Bursar that you can't in Go?
+## What sort of stuff can you do in Braid that you can't in Go?
 - Mostly ML-like syntax
 - Generic functions (H-M type checking)
 - Immutability by default
 - Pattern matching and algebraic data types
 - Typeclasses/traits/interfaces
 - Should we support currying?
-
-## What syntax is working right now?
-- Booleans, ints, floats, strings, chars (runes)
-- Equality and numeric comparisons (<, >, etc)
-- Single and multiple assignments
-- Nested expressions and correct parsing precedence
-- If/else/elseif expressions
-- Function definition
-- Modules (single file)
-- Comments
-- Calls to Braid functions
-
-# What are the obvious missing pieces for an MVP?
-- Importing other modules
-- Importing Go packages? But we can run it through goimports
-- Ability to define a main func? We could implement that anyway though
 
 ### Function calls
 

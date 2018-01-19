@@ -227,13 +227,13 @@ ExprLine = e:Expr N {
 }
 
 ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn
-    _N "->" _N ret:BaseType {
+    _N "->" _N ret:TypeAnnotation {
 
     return ExternFunc{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
         Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst) }, nil
 }
 
-ExternType = _ "extern" __N "type" __ name:ModuleName _ '=' _
+ExternType = _ "extern" __N "type" __ name:OptionalPointerName _ '=' _
     importName:StringLiteral _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
     // record type
     fields := []RecordField{first.(RecordField)}
@@ -253,7 +253,7 @@ ExternType = _ "extern" __N "type" __ name:ModuleName _ '=' _
         Fields: fields}, nil
 }
 /
-_ "extern" __N "type" __ name:ModuleName _ '=' _
+_ "extern" __N "type" __ name:OptionalPointerName _ '=' _
     importName:StringLiteral __ {
     // record type
     fields := []RecordField{}
@@ -535,7 +535,7 @@ ArgDefn = name:Identifier _ anno:(':' _ TypeAnnotation )? _ {
     return arg, nil
 }
 
-TypeAnnotation = AnyType / ModuleName /
+TypeAnnotation = OptionalPointerName / AnyType / 
 "func" _N args:ArgsDefn _ "->" _ ret:TypeAnnotation {
     // TODO: return correct func type annotation
     vals := args.(Container)
@@ -814,6 +814,12 @@ VariableName = !Reserved ([a-z]+ [a-zA-Z0-9_]*) {
 ModuleName = ([A-Z]+ [a-zA-Z0-9_]*) {
     return Identifier{StringValue:string(c.text)}, nil
 }
+
+PointerType = '*' m:ModuleName {
+    return Identifier{StringValue:string(c.text)}, nil
+}
+
+OptionalPointerName = ModuleName / PointerType
 
 Const = '-'? [0-9]+ !'.' {
     val, err := strconv.Atoi(string(c.text))

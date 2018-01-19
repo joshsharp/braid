@@ -381,7 +381,12 @@ func (e ExternRecordType) Compile(state State) (string, State) {
 		str += fmt.Sprintf("import %s \"%s\"\n", name, path)
 	}
 
-	str += fmt.Sprintf("type %s = %s.%s\n", e.Name, name, GetTypeFromImport(e.Import))
+	pointer := ""
+	if strings.Index(e.Import, "*") == 0 {
+		pointer = "*"
+	}
+
+	str += fmt.Sprintf("type %s = %s%s.%s\n", e.Name, pointer, name, GetTypeFromImport(e.Import))
 
 	return str, state
 
