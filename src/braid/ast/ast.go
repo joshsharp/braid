@@ -100,8 +100,9 @@ type VariantInstance struct {
 }
 
 type RecordInstance struct {
-	Name   string
-	Values map[string]Ast
+	Name         string
+	Values       map[string]Ast
+	InferredType Type
 }
 
 type If struct {
@@ -120,9 +121,10 @@ type Assignment struct {
 }
 
 type RecordType struct {
-	Name   string
-	Fields []RecordField
-	Params []Ast
+	Name         string
+	Fields       []RecordField
+	Params       []Ast
+	InferredType Type
 }
 
 type ExternRecordType struct {
@@ -196,7 +198,7 @@ func (a ExternRecordType) GetInferredType() Type {
 }
 
 func (a BasicAst) String() string {
-	switch (a.ValueType) {
+	switch a.ValueType {
 	case STRING:
 		if a.Type == "Comment" {
 			return fmt.Sprintf("//%s", a.StringValue)
@@ -261,7 +263,7 @@ func (i Identifier) SetInferredType(t Type) {
 }
 
 func (r RecordType) SetInferredType(t Type) {
-
+	r.InferredType = t
 }
 
 func (v VariantType) SetInferredType(t Type) {
@@ -325,7 +327,11 @@ func (r Return) GetInferredType() Type {
 }
 
 func (r RecordType) GetInferredType() Type {
-	return Unit
+	return r.InferredType
+}
+
+func (r RecordInstance) GetInferredType() Type {
+	return r.InferredType
 }
 
 func (v VariantType) GetInferredType() Type {
@@ -375,7 +381,7 @@ func (r Return) String() string {
 func (e Expr) String() string {
 	values := ""
 	for i, el := range e.Subvalues {
-		if (i > 0 ) {
+		if i > 0 {
 			values += " "
 		}
 		values += fmt.Sprint(el)
@@ -405,6 +411,10 @@ func (i Identifier) String() string {
 }
 
 func (r RecordType) String() string {
+	return r.Name
+}
+
+func (r RecordInstance) String() string {
 	return r.Name
 }
 
@@ -552,7 +562,7 @@ func (a Func) Print(indent int) string {
 	str += a.Name
 	if len(a.Arguments) > 0 {
 		str += " (\n"
-		for _, el := range (a.Arguments) {
+		for _, el := range a.Arguments {
 			str += el.Print(indent + 1)
 		}
 		for i := 0; i < indent; i++ {
@@ -562,7 +572,7 @@ func (a Func) Print(indent int) string {
 	}
 	str += fmt.Sprint(a.InferredType)
 	str += "\n"
-	for _, el := range (a.Subvalues) {
+	for _, el := range a.Subvalues {
 		str += el.Print(indent + 1)
 	}
 	return str
@@ -585,7 +595,7 @@ func (a Call) Print(indent int) string {
 			str += "  "
 		}
 		str += "(\n"
-		for _, el := range (a.Arguments) {
+		for _, el := range a.Arguments {
 			str += el.Print(indent + 1)
 		}
 		for i := 0; i < indent; i++ {
@@ -610,7 +620,7 @@ func (a VariantInstance) Print(indent int) string {
 			str += "  "
 		}
 		str += "(\n"
-		for _, el := range (a.Arguments) {
+		for _, el := range a.Arguments {
 			str += el.Print(indent + 1)
 		}
 		for i := 0; i < indent; i++ {
@@ -635,7 +645,7 @@ func (a RecordInstance) Print(indent int) string {
 			str += "  "
 		}
 		str += "(\n"
-		for key, el := range (a.Values) {
+		for key, el := range a.Values {
 			str += key + ":"
 			str += el.Print(indent + 1)
 		}
@@ -659,14 +669,14 @@ func (i If) Print(indent int) string {
 		str += i.Condition.Print(indent + 1)
 
 	}
-	for _, el := range (i.Then) {
+	for _, el := range i.Then {
 		for i := 0; i < indent; i++ {
 			str += "  "
 		}
 		str += "Then:\n"
 		str += el.Print(indent + 1)
 	}
-	for _, el := range (i.Else) {
+	for _, el := range i.Else {
 		for i := 0; i < indent; i++ {
 			str += "  "
 		}

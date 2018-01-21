@@ -784,18 +784,18 @@ VariantInstance = name:ModuleName _ args:Arguments {
 }
 
 RecordInstance = name:ModuleName _ '{' _ firstName:VariableName _ ':' _ firstValue:Expr rest:(',' _ VariableName _ ':' _ Expr )* '}' {
-    instance := RecordInstance{Name: name.(BasicAst).StringValue}
+    instance := RecordInstance{Name: name.(Identifier).StringValue}
     instance.Values = make(map[string]Ast)
 
     vals := rest.([]interface{})
-    instance.Values[firstName.(BasicAst).StringValue] = firstValue.(Ast)
+    instance.Values[firstName.(Identifier).StringValue] = firstValue.(Ast)
 
     if len(vals) > 0 {
         restSl := toIfaceSlice(rest)
         for _, v := range restSl {
             // we can get each item in the grammar by index
             restExpr := toIfaceSlice(v)
-            k := restExpr[2].(BasicAst).StringValue
+            k := restExpr[2].(Identifier).StringValue
             v := restExpr[6].(Ast)
             instance.Values[k] = v
         }
