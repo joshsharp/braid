@@ -16,7 +16,7 @@ let cheesy = (item, item2) {
 }
 
 let tester = (a) {
-    //let b = Payload{name: "greeting", data: "hi"}
+    let b = Payload{name: "greeting", data: "hi"}
 
 	let result = a + 1
 

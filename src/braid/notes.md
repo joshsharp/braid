@@ -52,7 +52,7 @@ type stringPeople string = list vaguePerson string
     - [X] Variant types
     - [X] Alias types
     - [X] Variant constructors need to support record constructor types
-[X] Record type literals
+[ ] Record type literals
 [X] Variant type literals
 [X] Function application should use parentheses 
 [X] Type construction also
