@@ -877,6 +877,29 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 
 		env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
 		return node, nil
+	case RecordInstance:
+		node := node.(RecordInstance)
+		el, ok := env.Env[node.Name]
+		if !ok {
+			return nil, InferenceError{"Don't know this type: " + node.String()}
+		}
+		node.InferredType = el
+		return node, nil
+	case RecordAccess:
+		node := node.(RecordAccess)
+		if len(node.Identifiers) < 2 {
+			return nil, InferenceError{"This record type has no fields: " + node.String()}
+		}
+		varName := node.Identifiers[0].StringValue
+		recordType, ok := env.Env[varName]
+		if !ok {
+			return nil, InferenceError{"Don't know the type of this variable: " + varName}
+		}
+		fieldName := node.Identifiers[1].StringValue
+		fieldType := recordType.(Record).Fields[fieldName]
+		node.InferredType = fieldType
+		env.UsedVariables[varName] = true
+		return node, nil
 	default:
 		panic("Don't know this type: " + node.String())
 	}

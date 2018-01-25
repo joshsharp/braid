@@ -86,9 +86,10 @@ type stringPeople string = list vaguePerson string
   [ ] Create stand-in traits for `extern trait` external interfaces
   [X] Handle `package/package` paths in `extern` strings
   [X] Handle looking up complex non-base types in annotations
-  [ ] Make sure external func calls are called with correct package names
+  [X] Make sure external func calls are called with correct package names
   [X] Unify function call args with the function
   [X] Infer record types
+  [ ] Infer record type instances
   [ ] Infer variant types
   [ ] Make sure type variables get updated properly (prune function not working entirely?)
   [X] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
