@@ -17,6 +17,8 @@ and slower speeds than the representative native Go code, but this tradeoff is e
 
 Syntax: 
 ```
+// comment
+
 let add = (a, b) {
     a + b;
 }
@@ -36,9 +38,9 @@ type MyPayload = {data: string}
 type Person = {age: int, name: string}
 type VaguePerson 'a = {name: string, extra: 'a}
 
-type people = list person
-type vaguePeople 'a = list vaguePerson 'a
-type stringPeople string = list vaguePerson string
+type People = List Person
+type VaguePeople 'a = List VaguePerson 'a
+type StringPeople string = List VaguePerson string // or `VaguePeople string`
 ```
 
 ### Parsing
@@ -89,7 +91,7 @@ type stringPeople string = list vaguePerson string
   [X] Make sure external func calls are called with correct package names
   [X] Unify function call args with the function
   [X] Infer record types
-  [ ] Infer record type instances
+  [X] Infer record type instances
   [ ] Infer variant types
   [ ] Make sure type variables get updated properly (prune function not working entirely?)
   [X] Make sure type variables get replaced properly (BinOps at least) or not compiled if not
@@ -109,9 +111,13 @@ type stringPeople string = list vaguePerson string
 ### Generating source
 [ ] Do we need another pass, after inference, that removes unused code, fixes returns, etc.?
 [X] Functions need to be literals if defined inside a function (use State to change compilation behaviour)
-[ ] Generate concrete types etc (monomorphise) based on args when called
+[ ] Generate concrete types etc (monomorphise) based on args when called, so no more "func not compiled" if it is called
 [X] `main` needs to either not have a return type, or be renamed and wrapped in another `main`
-  
+
+### Cleaning up for release
+[ ] Rebase? Get rid of anything not required in Git
+[ ] Add tests for all syntax features
+
 ### Later
 [X] 'Module' rule
 [X] Compile `let = if` rule specially - this means if expr branches need to be unified

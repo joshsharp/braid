@@ -254,7 +254,7 @@ ExternType = _ "extern" __N "type" __ name:ModuleName _ '=' _
 }
 /
 _ "extern" __N "type" __ name:ModuleName _ '=' _
-    importName:StringLiteral __ {
+    importName:StringLiteral N {
     // record type
     fields := []RecordField{}
 
@@ -262,9 +262,8 @@ _ "extern" __N "type" __ name:ModuleName _ '=' _
         Fields: fields}, nil
 }
 
-TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(__ TypeAnnotation)+ __ {
+TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnnotation)+ N {
     // alias type
-    parameters := []Ast{}
     fields := []Ast{}
 
     vals := types.([]interface{})
@@ -278,11 +277,11 @@ TypeDefn = _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' types:(_
         }
     }
 
-    return AliasType{Name: name.(Identifier).StringValue, Params: parameters, Types: fields }, nil
+    return AliasType{Name: name.(Identifier).StringValue, Params: params.(Container).Subvalues, Types: fields }, nil
 }
 /
-_ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
-    '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
+"type" __ name:ModuleName _ params:TypeParams _ '=' _
+    '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
     // record type
     fields := []RecordField{first.(RecordField)}
 
@@ -300,7 +299,40 @@ _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _
     return RecordType{Name: name.(Identifier).StringValue, Fields: fields}, nil
 }
 /
-_ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _ rest:(VariantConstructor)+ {
+"type" __ name:ModuleName _ '=' _
+    '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
+    // record type, no type params
+    fields := []RecordField{first.(RecordField)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(RecordField)
+            fields = append(fields, v)
+        }
+    }
+
+    return RecordType{Name: name.(Identifier).StringValue, Fields: fields}, nil
+}
+/
+"type" __ name:ModuleName _ params:TypeParams _ '=' _ rest:(VariantConstructor)+ {
+    // variant type
+    constructors := []VariantConstructor{}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        for _, v := range vals {
+            constructors = append(constructors, v.(VariantConstructor))
+        }
+    }
+
+    return VariantType{Name: name.(Identifier).StringValue, Params: params.(Container).Subvalues, Constructors: constructors}, nil
+}
+/
+"type" __ name:ModuleName _ '=' _ rest:(VariantConstructor)+ {
     // variant type
     parameters := []Ast{}
     constructors := []VariantConstructor{}
@@ -315,11 +347,27 @@ _ "type" __ name:ModuleName params:(__ TypeParameter)* _ '=' _ rest:(VariantCons
     return VariantType{Name: name.(Identifier).StringValue, Params: parameters, Constructors: constructors}, nil
 }
 
+TypeParams = '(' first:TypeParameter _ rest:(',' _ TypeParameter _)* ','? ')' {
+    args := []Ast{first.(Identifier)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(Identifier)
+            args = append(args, v)
+        }
+    }
+    return Container{Subvalues:args}, nil
+}
+
 RecordFieldDefn = name:VariableName _ ':' _ t:(TypeAnnotation) {
     return RecordField{Name: name.(Identifier).StringValue, Type: t.(Ast)}, nil
 }
 
-VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' __ {
+VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
     // variant constructor with a record type
     fields := []RecordField{first.(RecordField)}
 
@@ -338,7 +386,7 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
     return VariantConstructor{Name: name.(Identifier).StringValue, Fields: []Ast{record}}, nil
 }
 /
-'|' _ name:ModuleName rest:(__ TypeAnnotation)* _ {
+'|' _ name:ModuleName rest:(__ TypeAnnotation)* N {
     params := []Ast{}
 
     vals := rest.([]interface{})
