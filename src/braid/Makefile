@@ -11,6 +11,9 @@ run: grammar build
 	../../bin/braid $(ARG)
 .PHONY: run
 
+runv: grammar build
+	../../bin/braid $(ARG) -v
+
 build:
 	gb build all
 .PHONY: build

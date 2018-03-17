@@ -2,6 +2,18 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/alecthomas/template",
+			"repository": "https://github.com/alecthomas/template",
+			"revision": "a0175ee3bccc567396460bf5acd36800cb10c49c",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/alecthomas/units",
+			"repository": "https://github.com/alecthomas/units",
+			"revision": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/mna/pigeon",
 			"repository": "https://github.com/mna/pigeon",
 			"revision": "4468ff667da4e27301e257e6920165ddeb00c491",
@@ -20,6 +32,12 @@
 			"revision": "e011c1062a41d0e2614279f1dc8cf7f1bf6aaac3",
 			"branch": "master",
 			"path": "/imports"
+		},
+		{
+			"importpath": "gopkg.in/alecthomas/kingpin.v2",
+			"repository": "https://gopkg.in/alecthomas/kingpin.v2",
+			"revision": "947dcec5ba9c011838740e680966fd7087a71d0d",
+			"branch": "master"
 		}
 	]
 }

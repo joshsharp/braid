@@ -64,6 +64,14 @@ type Variant struct {
 	Params []string
 }
 
+func (v Variant) GetName() string {
+	return v.Name
+}
+
+func (v Variant) GetType() string {
+	return v.Name
+}
+
 type VariantConstructorType struct {
 	Name   string
 	Parent Variant
@@ -857,6 +865,28 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 
 		env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
+		return node, nil
+	case VariantType:
+		node := node.(VariantType)
+		for i, el := range node.Constructors {
+			cons, err := Infer(el, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
+			node.Constructors[i] = cons.(VariantConstructor)
+		}
+
+		var params []string
+		for _, p := range node.Params {
+			params = append(params, p.String())
+		}
+
+		// fields := make(map[string]Type)
+		// for _, p := range node.Constructors {
+		// 	fields[p.Name] = p.InferredType
+		// }
+
+		env.Env[node.Name] = Variant{Name: node.Name, Params: params}
 		return node, nil
 	case ExternRecordType:
 		node := node.(ExternRecordType)

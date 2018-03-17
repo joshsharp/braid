@@ -95,8 +95,9 @@ type RecordAccess struct {
 }
 
 type VariantInstance struct {
-	Name      string
-	Arguments []Ast
+	Name         string
+	Arguments    []Ast
+	InferredType Type
 }
 
 type RecordInstance struct {
@@ -138,6 +139,7 @@ type VariantType struct {
 	Name         string
 	Params       []Ast
 	Constructors []VariantConstructor
+	InferredType Type
 }
 
 type AliasType struct {
@@ -153,8 +155,9 @@ type RecordField struct {
 }
 
 type VariantConstructor struct {
-	Name   string
-	Fields []Ast
+	Name         string
+	Fields       []Ast
+	InferredType Type
 }
 
 type Return struct {
@@ -187,6 +190,10 @@ func (f RecordField) GetInferredType() Type {
 
 func (e ExternFunc) GetInferredType() Type {
 	return e.InferredType
+}
+
+func (v VariantConstructor) GetInferredType() Type {
+	return v.InferredType
 }
 
 func (a RecordAccess) GetInferredType() Type {
@@ -236,6 +243,10 @@ func (c Container) SetInferredType(t Type) {
 
 func (m Module) SetInferredType(t Type) {
 
+}
+
+func (v VariantConstructor) SetInferredType(t Type) {
+	v.InferredType = t
 }
 
 func (c Call) SetInferredType(t Type) {
@@ -335,7 +346,11 @@ func (r RecordInstance) GetInferredType() Type {
 }
 
 func (v VariantType) GetInferredType() Type {
-	return Unit
+	return v.InferredType
+}
+
+func (v VariantInstance) GetInferredType() Type {
+	return v.InferredType
 }
 
 func (a ArrayType) GetInferredType() Type {
@@ -418,7 +433,15 @@ func (r RecordInstance) String() string {
 	return r.Name
 }
 
+func (v VariantInstance) String() string {
+	return v.Name
+}
+
 func (v VariantType) String() string {
+	return v.Name
+}
+
+func (v VariantConstructor) String() string {
 	return v.Name
 }
 

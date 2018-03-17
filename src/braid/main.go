@@ -5,12 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
+
+	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+var (
+	verbose = kingpin.Flag("verbose", "Verbose mode.").Short('v').Bool()
+	name    = kingpin.Arg("name", "Braid file to process.").Required().String()
 )
 
 // takes raw Braid code and returns valid Go code.
-func Compile(input string) (string, error) {
+func Compile(input string, verbose bool) (string, error) {
 	lines := strings.Split(input, "\n")
 
 	// first we make a reader from the input, which is a string
@@ -30,13 +36,17 @@ func Compile(input string) (string, error) {
 		}
 		return "", err
 	}
-	// print the input
-	for i, el := range lines {
-		fmt.Printf("%03d|%s\n", i+1, el)
+
+	if verbose {
+		// print the input
+		for i, el := range lines {
+			fmt.Printf("%03d|%s\n", i+1, el)
+		}
 	}
 
 	// print the ast
 	a := result.(ast.Ast)
+
 	//fmt.Println("=", a.Print(0))
 
 	env := ast.State{Env: make(map[string]ast.Type), UsedVariables: make(map[string]bool),
@@ -50,10 +60,14 @@ func Compile(input string) (string, error) {
 		return "", err
 	}
 
-	fmt.Println("=", typedAst.Print(0))
+	if verbose {
+		fmt.Println("=", typedAst.Print(0))
+	}
 
 	output, _ := json.MarshalIndent(env, "", "  ")
-	fmt.Println(string(output))
+	if verbose {
+		fmt.Println(string(output))
+	}
 
 	// print the compiled Go
 	compiled, env := typedAst.Compile(env)
@@ -99,21 +113,21 @@ func printError(pe ast.ParserError, lines []string) {
 }
 
 func main() {
-	args := os.Args[1:]
+	kingpin.Parse()
 
-	if len(args) == 0 {
-		fmt.Printf("Must supply an argument of a file to compile, eg. `$ braid example.bd`\n")
-		return
-	}
+	// if len(args) == 0 {
+	// 	fmt.Printf("Must supply an argument of a file to compile, eg. `$ braid example.bd`\n")
+	// 	return
+	// }
 
-	result, err := ioutil.ReadFile(args[0])
+	result, err := ioutil.ReadFile(*name)
 	if err != nil {
-		fmt.Printf("Error reading file %s: %s\n", args[0], err.Error())
+		fmt.Printf("Error reading file %s: %s\n", *name, err.Error())
 		return
 	}
 
 	file := string(result)
-	compiled, cErr := Compile(file)
+	compiled, cErr := Compile(file, *verbose)
 	if cErr != nil {
 		return
 	}

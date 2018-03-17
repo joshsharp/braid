@@ -367,7 +367,7 @@ RecordFieldDefn = name:VariableName _ ':' _ t:(TypeAnnotation) {
     return RecordField{Name: name.(Identifier).StringValue, Type: t.(Ast)}, nil
 }
 
-VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
+VariantConstructor = _ '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
     // variant constructor with a record type
     fields := []RecordField{first.(RecordField)}
 
@@ -386,7 +386,7 @@ VariantConstructor = '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:
     return VariantConstructor{Name: name.(Identifier).StringValue, Fields: []Ast{record}}, nil
 }
 /
-'|' _ name:ModuleName rest:(__ TypeAnnotation)* N {
+_ '|' _ name:ModuleName rest:(__ TypeAnnotation)* N {
     params := []Ast{}
 
     vals := rest.([]interface{})
@@ -828,7 +828,7 @@ VariantInstance = name:ModuleName _ args:Arguments {
         arguments = []Ast{}
     }
 
-    return VariantInstance{Name:name.(BasicAst).StringValue, Arguments: arguments }, nil
+    return VariantInstance{Name:name.(Identifier).StringValue, Arguments: arguments }, nil
 }
 
 RecordInstance = name:ModuleName _ '{' _ firstName:VariableName _ ':' _ firstValue:Expr rest:(',' _ VariableName _ ':' _ Expr )* '}' {
