@@ -1,0 +1,18 @@
+module Main
+
+extern type ResponseWriter = "net/http.ResponseWriter"
+extern type Request = "*net/http.Request"
+
+extern func fprintf = "fmt.Fprintf" (writer: ResponseWriter, str: string) -> ()
+extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(ResponseWriter, Request)->()) -> ()
+extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
+
+let hello = (w: ResponseWriter, request: Request) -> (){
+    fprintf(w, "Hello world!")
+    
+}
+
+let main = {
+    handleFunc("/", hello)
+    listenAndServe(":8000", ())
+}
