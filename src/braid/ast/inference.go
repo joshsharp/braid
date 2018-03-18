@@ -51,6 +51,11 @@ type Record struct {
 	Fields map[string]Type
 }
 
+type VariantInstanceType struct {
+	Name  string
+	Types []Type
+}
+
 func (r Record) GetName() string {
 	return r.Name
 }

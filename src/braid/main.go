@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -87,29 +88,29 @@ func printError(pe ast.ParserError, lines []string) {
 	// print those past lines up until the line of the error
 	for i, el := range lines[start:pe.Pos()[0]] {
 		offset := start
-		fmt.Printf("%03d|%s\n", i+1+offset, el)
+		fmt.Fprintf(os.Stderr, "%03d|%s\n", i+1+offset, el)
 		//i += 1
 	}
 
 	// print the caret pointing to the position
 	line := lines[pe.Pos()[0]-1]
-	fmt.Printf("    ")
+	fmt.Fprintf(os.Stderr, "    ")
 	pos := pe.Pos()[1]
 	if pos > 0 {
 		pos--
 	}
 	for _, el := range line[:pos] {
 		if el == '\t' {
-			fmt.Printf("----")
+			fmt.Fprintf(os.Stderr, "----")
 		} else {
-			fmt.Printf("-")
+			fmt.Fprintf(os.Stderr, "-")
 		}
 	}
-	fmt.Printf("^\n\n")
+	fmt.Fprintf(os.Stderr, "^\n\n")
 
 	// print the actual error
-	fmt.Printf("Line %d, character %d: ", pe.Pos()[0], pe.Pos()[1])
-	fmt.Println(pe.InnerError())
+	fmt.Fprintf(os.Stderr, "Line %d, character %d: ", pe.Pos()[0], pe.Pos()[1])
+	fmt.Fprintln(os.Stderr, pe.InnerError())
 }
 
 func main() {
@@ -122,7 +123,7 @@ func main() {
 
 	result, err := ioutil.ReadFile(*name)
 	if err != nil {
-		fmt.Printf("Error reading file %s: %s\n", *name, err.Error())
+		fmt.Fprintf(os.Stderr, "Error reading file %s: %s\n", *name, err.Error())
 		return
 	}
 
