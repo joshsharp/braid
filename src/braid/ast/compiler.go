@@ -515,7 +515,7 @@ func (r RecordType) Compile(state State) (string, State) {
 	return str, state
 }
 
-func (v VariantType) Compile(state State) (string, State) {
+func (v Variant) Compile(state State) (string, State) {
 	// TODO: Only compile once we have concrete implementations
 	str := "type " + v.Name + " interface {\n" +
 		"\tsumtype()\n" +

@@ -329,7 +329,7 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
         }
     }
 
-    return VariantType{Name: name.(Identifier).StringValue, Params: params.(Container).Subvalues, Constructors: constructors}, nil
+    return Variant{Name: name.(Identifier).StringValue, Params: params.(Container).Subvalues, Constructors: constructors}, nil
 }
 /
 "type" __ name:ModuleName _ '=' _ rest:(VariantConstructor)+ {
@@ -344,7 +344,7 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
         }
     }
 
-    return VariantType{Name: name.(Identifier).StringValue, Params: parameters, Constructors: constructors}, nil
+    return Variant{Name: name.(Identifier).StringValue, Params: parameters, Constructors: constructors}, nil
 }
 
 TypeParams = '(' first:TypeParameter _ rest:(',' _ TypeParameter _)* ','? ')' {

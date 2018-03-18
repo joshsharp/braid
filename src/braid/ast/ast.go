@@ -135,7 +135,7 @@ type ExternRecordType struct {
 	Params []Ast
 }
 
-type VariantType struct {
+type Variant struct {
 	Name         string
 	Params       []Ast
 	Constructors []VariantConstructor
@@ -277,7 +277,7 @@ func (r RecordType) SetInferredType(t Type) {
 	r.InferredType = t
 }
 
-func (v VariantType) SetInferredType(t Type) {
+func (v Variant) SetInferredType(t Type) {
 
 }
 
@@ -345,7 +345,7 @@ func (r RecordInstance) GetInferredType() Type {
 	return r.InferredType
 }
 
-func (v VariantType) GetInferredType() Type {
+func (v Variant) GetInferredType() Type {
 	return v.InferredType
 }
 
@@ -437,7 +437,7 @@ func (v VariantInstance) String() string {
 	return v.Name
 }
 
-func (v VariantType) String() string {
+func (v Variant) String() string {
 	return v.Name
 }
 
@@ -776,7 +776,7 @@ func (t ExternRecordType) Print(indent int) string {
 	return str
 }
 
-func (t VariantType) Print(indent int) string {
+func (t Variant) Print(indent int) string {
 	str := ""
 
 	for i := 0; i < indent; i++ {
