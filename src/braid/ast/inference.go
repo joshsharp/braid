@@ -19,6 +19,17 @@ var (
 	MainReturnType     = TypeOperator{" ", []Type{}}
 )
 
+type Type interface {
+	GetName() string
+	GetType() string
+}
+
+type State struct {
+	Env           map[string]Type
+	UsedVariables map[string]bool
+	Module        *Module
+}
+
 type InferenceError struct {
 	Message string
 }
@@ -56,17 +67,31 @@ type VariantInstanceType struct {
 	Types []Type
 }
 
+type VariantType struct {
+	Name   string
+	Params []string
+}
+
+type VariantConstructorType struct {
+	Name   string
+	Parent VariantType
+	Types  []Type
+}
+
+func (v VariantInstanceType) GetName() string {
+	return v.Name
+}
+
+func (v VariantInstanceType) GetType() string {
+	return v.Name
+}
+
 func (r Record) GetName() string {
 	return r.Name
 }
 
 func (r Record) GetType() string {
 	return r.Name
-}
-
-type VariantType struct {
-	Name   string
-	Params []string
 }
 
 func (v VariantType) GetName() string {
@@ -77,22 +102,12 @@ func (v VariantType) GetType() string {
 	return v.Name
 }
 
-type VariantConstructorType struct {
-	Name   string
-	Parent VariantType
-	Params []string
-	Types  []Type
+func (v VariantConstructorType) GetName() string {
+	return v.Name
 }
 
-type Type interface {
-	GetName() string
-	GetType() string
-}
-
-type State struct {
-	Env           map[string]Type
-	UsedVariables map[string]bool
-	Imports       map[string]bool
+func (v VariantConstructorType) GetType() string {
+	return v.Parent.Name + "." + v.Name
 }
 
 func (f Function) String() string {
@@ -206,6 +221,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		//}
 
 		//node.InferredType = Unit
+		env.Module = &node
 		return node, nil
 
 	case ExternFunc:
@@ -332,6 +348,12 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			node.InferredType = NewTypeVariable()
 			return node, nil
 		}
+
+		if node.StringValue[0] == '\'' {
+			node.InferredType = NewTypeVariable()
+			return node, nil
+		}
+
 		t, err := GetType(node.StringValue, *env, nonGeneric)
 		if err != nil {
 			return nil, err
@@ -874,11 +896,15 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	case Variant:
 		node := node.(Variant)
 		for i, el := range node.Constructors {
-			cons, err := Infer(el, env, nonGeneric)
+			newEnv := State{Env: make(map[string]Type)}
+			CopyState(*env, newEnv)
+			newEnv.Env["__parent__"] = VariantType{Name: node.Name}
+			cons, err := Infer(el, &newEnv, nonGeneric)
 			if err != nil {
 				return nil, err
 			}
 			node.Constructors[i] = cons.(VariantConstructor)
+			env.Env[el.Name] = cons.(VariantConstructor).GetInferredType()
 		}
 
 		var params []string
@@ -886,12 +912,57 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			params = append(params, p.String())
 		}
 
-		// fields := make(map[string]Type)
-		// for _, p := range node.Constructors {
-		// 	fields[p.Name] = p.InferredType
-		// }
+		concrete := true
+
+		for _, constructor := range node.Constructors {
+			for _, f := range constructor.InferredType.(VariantConstructorType).Types {
+				//fields = append(fields, f.GetName())
+				if f.GetName()[0] == '\'' {
+					concrete = false
+					break
+				}
+			}
+			//fields[p.Name] = p.InferredType
+		}
+
+		if concrete {
+			env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
+		}
 
 		env.Env[node.Name] = VariantType{Name: node.Name, Params: params}
+		return node, nil
+
+	case VariantConstructor:
+		// TODO: this needs to actually make a type
+		node := node.(VariantConstructor)
+		parent := env.Env["__parent__"].(VariantType)
+
+		types := make([]Type, 0)
+
+		for i, field := range node.Fields {
+			//fmt.Println("Inferring variant constructor arg", field)
+			field, err := Infer(field, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
+			node.Fields[i] = field
+			types = append(types, field.GetInferredType())
+		}
+
+		node.InferredType = VariantConstructorType{Name: node.Name, Parent: parent, Types: types}
+		env.Env[node.Name] = node.InferredType
+
+		return node, nil
+
+	case VariantInstance:
+		// TODO: implement
+		// We need to look up the constructor in env and make sure it exists
+		// We then need to unify this instance's arguments with the constructor's types
+		// If the constructor's types weren't concrete before, we need to add a
+		// new ConcreteType for the variant to the module
+		//
+		node := node.(VariantInstance)
+		node.InferredType = VariantInstanceType{Name: node.Name, Types: []Type{String}}
 		return node, nil
 	case ExternRecordType:
 		node := node.(ExternRecordType)
@@ -936,10 +1007,10 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		env.UsedVariables[varName] = true
 		return node, nil
 	default:
-		panic("Don't know this type: " + node.String())
+		panic(fmt.Sprintf("Don't know this type (\"%s\"): %s", node.String(), node.Print(0)))
 	}
 
-	return nil, InferenceError{"Don't know this type: " + node.String()}
+	return nil, InferenceError{fmt.Sprintf("Don't know this type: %s", node.Print(0))}
 }
 
 func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
@@ -995,7 +1066,7 @@ func GetType(name string, env State, nonGeneric []Type) (Type, error) {
 	if _, ok := env.Env[name]; ok {
 		return Fresh(env.Env[name].(Type), nonGeneric), nil
 	}
-	return nil, InferenceError{"Undefined symbol " + name}
+	return nil, InferenceError{"Undefined type " + name}
 }
 
 func Unify(t1 *Type, t2 *Type, env *State) error {

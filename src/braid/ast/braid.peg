@@ -202,9 +202,9 @@ Module = _ "module" __N name:ModuleName __ stat:TopLevelStatement _ rest:(TopLev
         for _, el := range(vals){
             subvalues = append(subvalues, el.(Ast))
         }
-        return Module{Name:name.(Identifier).StringValue, Subvalues: subvalues}, nil
+        return Module{Name:name.(Identifier).StringValue, Subvalues: subvalues, Imports: make(map[string]bool),}, nil
     } else {
-        return Module{Name:name.(Identifier).StringValue, Subvalues: []Ast{stat.(Ast)} }, nil
+        return Module{Name:name.(Identifier).StringValue, Subvalues: []Ast{stat.(Ast)}, Imports: make(map[string]bool), }, nil
     }
 }
 

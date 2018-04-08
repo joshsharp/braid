@@ -18,8 +18,10 @@ const (
 )
 
 type Module struct {
-	Name      string
-	Subvalues []Ast
+	Name          string
+	Subvalues     []Ast
+	ConcreteTypes []Ast
+	Imports       map[string]bool
 }
 
 type BasicAst struct {
@@ -142,6 +144,12 @@ type Variant struct {
 	InferredType Type
 }
 
+type VariantConstructor struct {
+	Name         string
+	Fields       []Ast
+	InferredType Type
+}
+
 type AliasType struct {
 	Name   string
 	Params []Ast
@@ -151,12 +159,6 @@ type AliasType struct {
 type RecordField struct {
 	Name         string
 	Type         Ast
-	InferredType Type
-}
-
-type VariantConstructor struct {
-	Name         string
-	Fields       []Ast
 	InferredType Type
 }
 
@@ -814,7 +816,11 @@ func (c VariantConstructor) Print(indent int) string {
 	for i := 0; i < indent; i++ {
 		str += "  "
 	}
-	str += "Constructor:\n"
+	str += c.Name + " Constructor:\n"
+
+	for _, el := range c.Fields {
+		str += el.Print(indent + 1)
+	}
 
 	return str
 }

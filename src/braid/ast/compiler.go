@@ -376,8 +376,8 @@ func (e ExternRecordType) Compile(state State) (string, State) {
 	path := GetImportPath(e.Import)
 	name := "__go_" + StripImportPath(path)
 
-	if _, ok := state.Imports[name]; !ok {
-		state.Imports[name] = true
+	if _, ok := state.Module.Imports[name]; !ok {
+		state.Module.Imports[name] = true
 		str += fmt.Sprintf("import %s \"%s\"\n", name, path)
 	}
 
@@ -398,11 +398,11 @@ func (e ExternFunc) Compile(state State) (string, State) {
 	path := GetImportPath(e.Import)
 	name := "__go_" + StripImportPath(path)
 
-	if _, ok := state.Imports[name]; ok {
+	if _, ok := state.Module.Imports[name]; ok {
 		return "", state
 	}
 
-	state.Imports[name] = true
+	state.Module.Imports[name] = true
 
 	// TODO: handle tracking whether functions are actually called - not sure how to get root state
 	//if _, ok := state.UsedVariables[e.Name]; !ok {
@@ -465,7 +465,7 @@ func (a Func) Compile(state State) (string, State) {
 	//innerState := State{Env:make(map[string]Type), UsedVariables:make(map[string]bool)}
 	//CopyState(newState, innerState)
 	newState := state.Env[a.Name].(Function).Env
-	newState.Imports = state.Imports
+	newState.Module = state.Module
 	newState.Env["scope"] = Function{}
 
 	for _, el := range a.Subvalues {
@@ -517,18 +517,19 @@ func (r RecordType) Compile(state State) (string, State) {
 
 func (v Variant) Compile(state State) (string, State) {
 	// TODO: Only compile once we have concrete implementations
-	str := "type " + v.Name + " interface {\n" +
-		"\tsumtype()\n" +
-		"}\n\n"
+	// str := "type " + v.Name + " interface {\n" +
+	// 	"\tsumtype()\n" +
+	// 	"}\n\n"
 
-	for _, el := range v.Constructors {
-		value, s := el.Compile(state)
+	// for _, el := range v.Constructors {
+	// 	value, s := el.Compile(state)
 
-		str += value
-		state = s
-	}
+	// 	str += value
+	// 	state = s
+	// }
 
-	return str, state
+	// return str, state
+	return "", state
 }
 
 func (c VariantConstructor) Compile(state State) (string, State) {

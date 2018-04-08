@@ -1,7 +1,11 @@
 module Main
 
+type StringResult = 
+	| OkS string
+	| ErrorS string
+
 type Result ('a, 'b) = 
-	| Ok 'a 
+	| Ok 'a
 	| Error 'b
 
 type Person = {
@@ -9,9 +13,12 @@ type Person = {
 	age: int64,
 }
 
+extern func println = "fmt.Println" (s: string) -> ()
+
 let main = {
-	let a = Ok("Yes")
-	let b = Error("Bad")
-	let josh = Person("Josh",99)
+	let mm = Ok("Delicious")
+	let ugh = ErrorS("Bad smell")
+	let josh = Person{name: "Josh", age: 99}
+	println(josh.name)
 }
 

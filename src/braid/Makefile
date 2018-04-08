@@ -8,11 +8,11 @@ BINARY_NAME=braid
 all: build run
 
 run: grammar build
-	../../bin/braid $(ARG)
+	../../bin/braid $(file)
 .PHONY: run
 
 runv: grammar build
-	../../bin/braid $(ARG) -v
+	../../bin/braid $(file) -v
 
 build:
 	gb build all

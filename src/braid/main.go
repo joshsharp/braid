@@ -46,12 +46,12 @@ func Compile(input string, verbose bool) (string, error) {
 	}
 
 	// print the ast
-	a := result.(ast.Ast)
+	a := result.(ast.Module)
 
 	//fmt.Println("=", a.Print(0))
 
 	env := ast.State{Env: make(map[string]ast.Type), UsedVariables: make(map[string]bool),
-		Imports: make(map[string]bool),
+		Module: &a,
 	}
 
 	// infer types for the ast
