@@ -29,6 +29,7 @@ func StripImportPath(extern string) string {
 }
 
 func (m Module) Compile(state State) (string, State) {
+
 	values := fmt.Sprintf("package %s\n\n", strings.ToLower(m.Name))
 	for _, el := range m.Subvalues {
 		value, s := el.Compile(state)
@@ -63,6 +64,12 @@ func (m Module) Compile(state State) (string, State) {
 	}
 	// having rearranged, we make our final string again
 	final := strings.Join(lines, "\n")
+	for _, t := range state.Module.ConcreteTypes {
+		fmt.Println("concrete compile of", t)
+		value, s := t.Compile(state)
+		final += value
+		state = s
+	}
 
 	return final, state
 }
@@ -517,19 +524,19 @@ func (r RecordType) Compile(state State) (string, State) {
 
 func (v Variant) Compile(state State) (string, State) {
 	// TODO: Only compile once we have concrete implementations
-	// str := "type " + v.Name + " interface {\n" +
-	// 	"\tsumtype()\n" +
-	// 	"}\n\n"
+	str := "type " + v.Name + " interface {\n" +
+		"\tsealed" + v.Name + "()\n" +
+		"}\n\n"
 
-	// for _, el := range v.Constructors {
-	// 	value, s := el.Compile(state)
+	for _, el := range v.Constructors {
+		value, s := el.Compile(state)
 
-	// 	str += value
-	// 	state = s
-	// }
+		str += value
+		state = s
+	}
 
-	// return str, state
-	return "", state
+	return str, state
+	//return "", state
 }
 
 func (c VariantConstructor) Compile(state State) (string, State) {
@@ -542,7 +549,7 @@ func (c VariantConstructor) Compile(state State) (string, State) {
 	str += "\n}\n\n"
 
 	// implement sealed
-	str += "func (*" + c.Name + ") sumtype() {}\n\n"
+	str += "func (*" + c.Name + ") sealed" + c.InferredType.(VariantConstructorType).Parent.Name + "() {}\n\n"
 
 	return str, state
 }

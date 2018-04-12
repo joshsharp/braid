@@ -926,7 +926,11 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 
 		if concrete {
+
 			env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
+		} else {
+			//fmt.Println("not concrete type:", node.Name)
+
 		}
 
 		env.Env[node.Name] = VariantType{Name: node.Name, Params: params}

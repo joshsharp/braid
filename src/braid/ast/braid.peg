@@ -262,7 +262,7 @@ _ "extern" __N "type" __ name:ModuleName _ '=' _
         Fields: fields}, nil
 }
 
-TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnnotation)+ N {
+TypeDefn = _ "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnnotation)+ N {
     // alias type
     fields := []Ast{}
 
@@ -280,7 +280,7 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
     return AliasType{Name: name.(Identifier).StringValue, Params: params.(Container).Subvalues, Types: fields }, nil
 }
 /
-"type" __ name:ModuleName _ params:TypeParams _ '=' _
+_ "type" __ name:ModuleName _ params:TypeParams _ '=' _
     '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
     // record type
     fields := []RecordField{first.(RecordField)}
@@ -295,11 +295,11 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
             fields = append(fields, v)
         }
     }
-
+    
     return RecordType{Name: name.(Identifier).StringValue, Fields: fields}, nil
 }
 /
-"type" __ name:ModuleName _ '=' _
+_ "type" __ name:ModuleName _ '=' _
     '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
     // record type, no type params
     fields := []RecordField{first.(RecordField)}
@@ -314,12 +314,12 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
             fields = append(fields, v)
         }
     }
-
+    
     return RecordType{Name: name.(Identifier).StringValue, Fields: fields}, nil
 }
 /
-"type" __ name:ModuleName _ params:TypeParams _ '=' _ rest:(VariantConstructor)+ {
-    // variant type
+_ "type" __ name:ModuleName _ params:TypeParams _ '=' _ rest:(VariantConstructor)+ N {
+    // variant type with params
     constructors := []VariantConstructor{}
 
     vals := rest.([]interface{})
@@ -328,11 +328,11 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
             constructors = append(constructors, v.(VariantConstructor))
         }
     }
-
+    
     return Variant{Name: name.(Identifier).StringValue, Params: params.(Container).Subvalues, Constructors: constructors}, nil
 }
 /
-"type" __ name:ModuleName _ '=' _ rest:(VariantConstructor)+ {
+_ "type" __ name:ModuleName _ '=' _ rest:(VariantConstructor)+ N {
     // variant type
     parameters := []Ast{}
     constructors := []VariantConstructor{}
@@ -343,7 +343,7 @@ TypeDefn = "type" __ name:ModuleName _ params:TypeParams _ '=' types:(__ TypeAnn
             constructors = append(constructors, v.(VariantConstructor))
         }
     }
-
+    
     return Variant{Name: name.(Identifier).StringValue, Params: parameters, Constructors: constructors}, nil
 }
 
@@ -367,7 +367,8 @@ RecordFieldDefn = name:VariableName _ ':' _ t:(TypeAnnotation) {
     return RecordField{Name: name.(Identifier).StringValue, Type: t.(Ast)}, nil
 }
 
-VariantConstructor = _ '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' N {
+VariantConstructor = _ '|' _ name:ModuleName _ 
+    '{' _ first:RecordFieldDefn _ rest:(',' _ RecordFieldDefn _)* ','? _ '}' {
     // variant constructor with a record type
     fields := []RecordField{first.(RecordField)}
 
@@ -386,7 +387,7 @@ VariantConstructor = _ '|' _ name:ModuleName _ '{' _ first:RecordFieldDefn _ res
     return VariantConstructor{Name: name.(Identifier).StringValue, Fields: []Ast{record}}, nil
 }
 /
-_ '|' _ name:ModuleName rest:(__ TypeAnnotation)* N {
+_ '|' _ name:ModuleName rest:(__ TypeAnnotation)* {
     params := []Ast{}
 
     vals := rest.([]interface{})

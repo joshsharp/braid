@@ -39,8 +39,8 @@ type Person = {age: int, name: string}
 type VaguePerson 'a = {name: string, extra: 'a}
 
 type People = List Person
-type VaguePeople 'a = List VaguePerson 'a
-type StringPeople string = List VaguePerson string // or `VaguePeople string`
+type VaguePeople ('a) = List VaguePerson 'a
+type StringPeople = List VaguePerson string // or `VaguePeople string`
 ```
 
 ### Parsing
@@ -54,7 +54,7 @@ type StringPeople string = List VaguePerson string // or `VaguePeople string`
     - [X] Variant types
     - [X] Alias types
     - [X] Variant constructors need to support record constructor types
-[ ] Record type literals
+[X] Record type literals
 [X] Variant type literals
 [X] Function application should use parentheses 
 [X] Type construction also
@@ -64,7 +64,7 @@ type StringPeople string = List VaguePerson string // or `VaguePeople string`
 [X] `extern type` 
 [X] `extern trait`
 [X] Parse record field lookups eg `person.name`
-[ ] Record and sum types need to handle `('a, 'b)` parentheses syntax
+[X] Record and sum types need to handle `('a, 'b)` parentheses syntax
 [X] `func` type
 [X] Make concrete types for func args if annotated but not used
 [X] Handle extern pointer type `*` (doing this with `*` prefix in import path)
@@ -104,6 +104,7 @@ type StringPeople string = List VaguePerson string // or `VaguePeople string`
   [X] Compile extern pointer type to `*Thing` (using type aliases to do this)
   [X] Make sure imports always come before everything else
   [ ] Unify return type and return type annotation
+  [ ] Record type access needs to be capitalised (eg. `person.name` becomes `person.Name`)
   
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
 

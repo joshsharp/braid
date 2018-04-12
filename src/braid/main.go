@@ -61,8 +61,12 @@ func Compile(input string, verbose bool) (string, error) {
 		return "", err
 	}
 
+	//fmt.Println(a.ConcreteTypes)
+	env.Module = &a
+
 	if verbose {
 		fmt.Println("=", typedAst.Print(0))
+
 	}
 
 	output, _ := json.MarshalIndent(env, "", "  ")
