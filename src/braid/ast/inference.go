@@ -209,7 +209,9 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 				if err != nil {
 					return nil, err
 				} else {
-					newStatements = append(newStatements, t)
+					if t != nil {
+						newStatements = append(newStatements, t)
+					}
 					//fmt.Printf("Module infer %s: %s\n", s.String(), t.GetInferredType())
 				}
 			}
@@ -925,16 +927,13 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 			//fields[p.Name] = p.InferredType
 		}
 
+		env.Env[node.Name] = VariantType{Name: node.Name, Params: params}
+
 		if concrete {
 
 			env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
-		} else {
-			//fmt.Println("not concrete type:", node.Name)
-
 		}
-
-		env.Env[node.Name] = VariantType{Name: node.Name, Params: params}
-		return node, nil
+		return nil, nil
 
 	case VariantConstructor:
 		// TODO: this needs to actually make a type
@@ -966,7 +965,25 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		// new ConcreteType for the variant to the module
 		//
 		node := node.(VariantInstance)
-		node.InferredType = VariantInstanceType{Name: node.Name, Types: []Type{String}}
+		vType, ok := env.Env[node.Name]
+		if !ok {
+			return nil, InferenceError{"Don't know the type of this variable: " + node.Name}
+		}
+
+		for i, t := range vType.(VariantConstructorType).Types {
+			arg := node.Arguments[i]
+			arg, err := Infer(arg, env, nonGeneric)
+			if err != nil {
+				return nil, err
+			}
+			argType := arg.GetInferredType()
+			err = Unify(&argType, &t, env)
+			if err != nil {
+				return nil, InferenceError{fmt.Sprintf("Argument %d to %s doesn't match type %s", i+1, node.Name, t.GetName())}
+			}
+		}
+
+		node.InferredType = VariantInstanceType{Name: node.Name, Types: vType.(VariantConstructorType).Types}
 		return node, nil
 	case ExternRecordType:
 		node := node.(ExternRecordType)
@@ -1007,6 +1024,7 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		}
 		fieldName := node.Identifiers[1].StringValue
 		fieldType := recordType.(Record).Fields[fieldName]
+		node.Identifiers[1].StringValue = strings.Title(node.Identifiers[1].StringValue)
 		node.InferredType = fieldType
 		env.UsedVariables[varName] = true
 		return node, nil
