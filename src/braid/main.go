@@ -55,7 +55,7 @@ func Compile(input string, verbose bool) (string, error) {
 	}
 
 	// infer types for the ast
-	typedAst, err := ast.Infer(a, &env, nil)
+	typedAst, err := a.Infer(&env, nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		return "", err

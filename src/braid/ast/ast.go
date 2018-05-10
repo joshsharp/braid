@@ -179,6 +179,7 @@ type Ast interface {
 	String() string
 	Print(indent int) string
 	Compile(state State) (string, State)
+	Infer(state *State, nonGeneric []Type) (Ast, error)
 	GetInferredType() Type
 }
 

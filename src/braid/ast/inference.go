@@ -170,6 +170,857 @@ func NewTempVariable() string {
 	return name
 }
 
+func (node Module) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	//node := node.(Module)
+	statements := node.Subvalues
+
+	var newStatements []Ast
+
+	for _, s := range statements {
+		switch s.(type) {
+		case Comment:
+			continue
+		default:
+			//fmt.Printf("Encountered %s\n", s.String())
+			t, err := s.Infer(env, nonGeneric)
+			if err != nil {
+				return nil, err
+			} else {
+				if t != nil {
+					newStatements = append(newStatements, t)
+				}
+				//fmt.Printf("Module infer %s: %s\n", s.String(), t.GetInferredType())
+			}
+		}
+	}
+	node.Subvalues = newStatements
+	//for _, s := range node.Subvalues {
+	//
+	//	fmt.Printf("Module infer %s: %s\n", s.String(), s.GetInferredType())
+	//}
+
+	//node.InferredType = Unit
+	env.Module = &node
+	return node, nil
+}
+
+func (node BasicAst) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	switch node.ValueType {
+	case CHAR:
+		node.InferredType = Rune
+		return node, nil
+	case INT:
+		node.InferredType = Integer
+		return node, nil
+	case FLOAT:
+		node.InferredType = Float
+		return node, nil
+	case BOOL:
+		node.InferredType = Boolean
+		return node, nil
+	case STRING:
+		node.InferredType = String
+		return node, nil
+	case NIL:
+		node.InferredType = Unit
+		return node, nil
+	}
+	panic("Unknown type")
+}
+
+func (node Operator) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	switch node.ValueType {
+	case NUMBER:
+		node.InferredType = Number
+		return node, nil
+	case CHAR:
+		node.InferredType = Rune
+		return node, nil
+	case INT:
+		node.InferredType = Integer
+		return node, nil
+	case FLOAT:
+		node.InferredType = Float
+		return node, nil
+	case BOOL:
+		node.InferredType = Boolean
+		return node, nil
+	case STRING:
+		node.InferredType = String
+		return node, nil
+	}
+	panic("Unknown type")
+}
+
+func (node Comment) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	return node, nil
+}
+
+func (node Assignment) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	right := node.Right
+	//fmt.Printf("Encountered %s\n", right.String())
+	rightSide, err := right.Infer(env, nonGeneric)
+	if err != nil {
+		return nil, err
+	}
+
+	///fmt.Println("right side type:", rightSide.GetInferredType())
+	if node.Left.(Identifier).StringValue != "_" {
+		name := node.Left.(Identifier).StringValue
+
+		if _, ok := (*env).Env[name]; ok {
+			return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
+		}
+
+		(*env).Env[name] = rightSide.GetInferredType()
+
+	}
+
+	left := Identifier{StringValue: node.Left.(Identifier).StringValue,
+		InferredType: rightSide.GetInferredType()}
+
+	// check in case this is a typevar already stored
+	if t, ok := (*env).Env[rightSide.GetInferredType().GetName()]; ok {
+		(*env).Env[left.StringValue] = t
+		left.InferredType = t
+	}
+
+	node.Right = rightSide
+	node.Left = left
+	node.InferredType = left.GetInferredType()
+
+	return node, nil
+
+}
+
+func (node Identifier) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	if node.StringValue == "_" {
+		node.InferredType = NewTypeVariable()
+		return node, nil
+	}
+
+	if node.StringValue[0] == '\'' {
+		node.InferredType = NewTypeVariable()
+		return node, nil
+	}
+
+	t, err := GetType(node.StringValue, *env, nonGeneric)
+	if err != nil {
+		return nil, err
+	}
+	(*env).UsedVariables[node.StringValue] = true
+	node.InferredType = t
+	return node, nil
+}
+
+func (node Call) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	fType := (*env).Env[node.Function.StringValue]
+	if fType == nil {
+		return nil, InferenceError{"Do not know the type of function " + node.Function.StringValue}
+	}
+
+	// remove one type for return type
+	if len(node.Arguments) != len(fType.(Function).Types)-1 {
+		return nil, InferenceError{fmt.Sprintf("Called function %s with %d argument%s, but it takes %d",
+			node.Function, len(node.Arguments),
+			func() string {
+				if len(node.Arguments) == 1 {
+					return ""
+				}
+				return "s"
+			}(),
+			len(fType.(Function).Types)-1)}
+	}
+	// infer call args so they get marked as used, and eventually unify with func defn args
+	for i, el := range node.Arguments {
+
+		fArg := fType.(Function).Types[i]
+
+		// infer arg
+		el, err := el.Infer(env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+
+		t := el.GetInferredType()
+
+		// now unify matching func arg type
+		err = Unify(&t, &fArg, env)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	types := fType.(Function).Types
+	node.InferredType = types[len(types)-1]
+	(*env).UsedVariables[node.Function.StringValue] = true
+
+	// if external func, rewrite to original func name and module
+	if fType.(Function).External != "" {
+		node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[0]}
+		node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[1]}
+	}
+	//fmt.Println((*env).UsedVariables)
+	return node, nil
+}
+
+func (node BinOp) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	//fmt.Printf("Encountered %s\n", node.String())
+
+	operator := node.Operator
+	op, err := operator.Infer(env, nonGeneric)
+	//fmt.Printf("Encountered %s\n", op.String())
+	if err != nil {
+		return nil, err
+	}
+
+	l := node.Left
+
+	left, err := l.Infer(env, nonGeneric)
+
+	if err != nil {
+		return nil, err
+	}
+
+	r := node.Right
+	right, err := r.Infer(env, nonGeneric)
+	if err != nil {
+		return nil, err
+	}
+
+	node.Left = left
+	node.Right = right
+	node.Operator = op
+	lType := left.GetInferredType()
+	rType := right.GetInferredType()
+	err = Unify(&lType, &rType, env)
+	if err != nil {
+		return nil, err
+	}
+
+	// number is a convenience for how go handles ops with floats and ints
+	// if we see it, be more specific by using the left type
+	if op.GetInferredType().GetName() == Number.GetName() {
+		node.InferredType = lType
+		// that they've been unified
+	} else {
+		node.InferredType = op.GetInferredType()
+		Unify(&lType, &node.InferredType, env)
+		Unify(&rType, &node.InferredType, env)
+	}
+
+	return node, nil
+
+}
+
+func (node Container) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	return node, nil
+}
+
+func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	node.TempVar = NewTempVariable()
+	(*env).UsedVariables[node.TempVar] = true
+	//fmt.Println("new temp var", node.TempVar)
+
+	ifAst := node.Condition
+	condition, err := ifAst.Infer(env, nonGeneric)
+	if err != nil {
+		return nil, err
+	}
+
+	if condition.GetInferredType().GetType() != Boolean.GetType() {
+		return nil, InferenceError{"Condition must be a boolean"}
+	}
+
+	statements := node.Then
+	var thenType Type
+	var elseType Type
+
+	// infer all statements
+	newStatements := []Ast{}
+
+	for i, s := range statements {
+		switch s.(type) {
+		case BasicAst, Expr, BinOp:
+			t, err := s.Infer(env, nonGeneric)
+			thenType = t.GetInferredType()
+
+			if err != nil {
+				return nil, err
+			} else {
+
+				if i == len(statements)-1 {
+					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+						Right: t, Update: true}
+
+					newStatements = append(newStatements, assign)
+				} else {
+					newStatements = append(newStatements, t)
+				}
+				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+			}
+
+		case Assignment:
+			t, err := s.Infer(env, nonGeneric)
+			thenType = t.GetInferredType()
+
+			if err != nil {
+				return nil, err
+			} else {
+				newStatements = append(newStatements, t)
+				if i == len(statements)-1 {
+					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+						Right: t.(Assignment).Left, Update: true}
+					newStatements = append(newStatements, assign)
+				}
+				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+			}
+		default:
+
+			t, err := s.Infer(env, nonGeneric)
+			thenType = t.GetInferredType()
+
+			if err != nil {
+				return nil, err
+			} else {
+				newStatements = append(newStatements, t)
+				if i == len(statements)-1 {
+					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+						Right: t, Update: true}
+
+					newStatements = append(newStatements, assign)
+				}
+				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+			}
+		}
+	}
+
+	node.Then = newStatements
+
+	statements = node.Else
+	newStatements = []Ast{}
+
+	// infer all statements
+	for i, s := range statements {
+		switch s.(type) {
+		case BasicAst, BinOp, Expr:
+			t, err := s.Infer(env, nonGeneric)
+			thenType = t.GetInferredType()
+
+			if err != nil {
+				return nil, err
+			} else {
+
+				if i == len(statements)-1 {
+					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+						Right: t, Update: true}
+					newStatements = append(newStatements, assign)
+				} else {
+					newStatements = append(newStatements, t)
+				}
+				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+			}
+		case Assignment:
+			t, err := s.Infer(env, nonGeneric)
+			thenType = t.GetInferredType()
+
+			if err != nil {
+				return nil, err
+			} else {
+				newStatements = append(newStatements, t)
+				if i == len(statements)-1 {
+					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+						Right: t.(Assignment).Left, Update: true}
+					newStatements = append(newStatements, assign)
+				}
+				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+			}
+		default:
+
+			t, err := s.Infer(env, nonGeneric)
+			thenType = t.GetInferredType()
+
+			if err != nil {
+				return nil, err
+			} else {
+				newStatements = append(newStatements, t)
+				if i == len(statements)-1 {
+					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+						Right: t, Update: true}
+					newStatements = append(newStatements, assign)
+				}
+				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
+			}
+		}
+	}
+
+	node.Else = newStatements
+
+	if elseType != nil {
+		err = Unify(&thenType, &elseType, env)
+		if err != nil {
+			return nil, err
+		}
+		node.InferredType = elseType
+
+	} else {
+		node.InferredType = thenType
+	}
+
+	return node, nil
+
+}
+
+func (node ArrayType) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	var lastType Type
+	var newValues []Ast
+
+	for _, s := range node.Subvalues {
+		t, err := s.Infer(env, nonGeneric)
+		tType := t.GetInferredType()
+
+		if err != nil {
+			return nil, err
+		}
+		if lastType != nil {
+
+			err := Unify(&tType, &lastType, env)
+			if err != nil {
+				return nil, err
+			}
+		}
+		lastType = tType
+		newValues = append(newValues, t)
+
+		if err != nil {
+			//fmt.Println(err.Error())
+			return nil, err
+		} else {
+			//fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+		}
+	}
+	node.Subvalues = newValues
+	node.InferredType = lastType
+	//fmt.Println("Array type is", lastType.GetName())
+	return node, nil
+
+}
+
+func (node Expr) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	var lastType Type
+	newValues := []Ast{}
+
+	for _, s := range node.Subvalues {
+		//fmt.Printf("Encountered %s\n", s.String())
+		t, err := s.Infer(env, nonGeneric)
+
+		if err != nil {
+			return nil, err
+		}
+		tType := t.GetInferredType()
+		if lastType != nil {
+
+			err := Unify(&tType, &lastType, env)
+			if err != nil {
+				return nil, err
+			}
+		}
+		lastType = tType
+		newValues = append(newValues, t)
+
+		//fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
+
+	}
+	node.Subvalues = newValues
+	// why are we updating the type from the env here?
+	if t, ok := (*env).Env[lastType.GetName()]; ok {
+		lastType = t
+	}
+	node.InferredType = lastType
+	return node, nil
+
+}
+
+func (node Func) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	statements := node.Subvalues
+	var newStatements []Ast
+	var lastType Type
+	var newEnv = State{Env: make(map[string]Type), UsedVariables: make(map[string]bool)}
+	CopyState(*env, newEnv)
+
+	// init
+	// argument names as type variables ready to be filled
+	if len(node.Arguments) > 0 {
+		for _, el := range node.Arguments {
+			newType := NewTypeVariable()
+			newEnv.Env[el.(Identifier).StringValue] = newType
+			if el.(Identifier).Annotation != nil {
+				t, err := GetTypeFromAnnotation(el.(Identifier).Annotation, env)
+				if err != nil {
+					return nil, InferenceError{fmt.Sprintf("Cannot understand type annotation %s: %s",
+						el.(Identifier).StringValue,
+						el.(Identifier).Annotation)}
+				}
+
+				Unify(&t, &newType, &newEnv)
+				newEnv.Env[el.(Identifier).StringValue] = t
+			}
+		}
+	}
+
+	if _, ok := (*env).Env[node.Name]; ok {
+		return nil, InferenceError{"Cannot redeclare func " + node.Name + ", it is already declared"}
+	}
+
+	// infer all statements
+	for i, s := range statements {
+		switch s.(type) {
+		case If:
+			t, err := s.Infer(&newEnv, nonGeneric)
+
+			if err != nil {
+				return nil, err
+			} else {
+				lastType = t.GetInferredType()
+				newStatements = append(newStatements, t)
+				// if last, replace with its equivalent return
+				if i == len(statements)-1 && node.Name != "main" {
+					returnAst := Return{Value: Identifier{StringValue: t.(If).TempVar}}
+					newEnv.UsedVariables[t.(If).TempVar] = true
+					newStatements = append(newStatements, returnAst)
+				}
+			}
+		case Expr:
+			t, err := s.Infer(&newEnv, nonGeneric)
+
+			if err != nil {
+				return nil, err
+			} else {
+				lastType = t.GetInferredType()
+				// if last, replace with its equivalent return
+				if i == len(statements)-1 && lastType.GetName() != Unit.GetName() && node.Name != "main" {
+					returnAst := Return{Value: t}
+					newStatements = append(newStatements, returnAst)
+
+				} else {
+					newStatements = append(newStatements, t)
+				}
+			}
+		case BinOp:
+			t, err := s.Infer(&newEnv, nonGeneric)
+
+			if err != nil {
+				return nil, err
+			} else {
+				lastType = t.GetInferredType()
+
+				// if last, replace with its equivalent return
+				if i == len(statements)-1 && node.Name != "main" {
+					returnAst := Return{Value: t}
+					newStatements = append(newStatements, returnAst)
+				} else {
+					newStatements = append(newStatements, t)
+				}
+			}
+		case Assignment:
+			t, err := s.Infer(&newEnv, nonGeneric)
+
+			if err != nil {
+				return nil, err
+			} else {
+				lastType = t.GetInferredType()
+				newStatements = append(newStatements, t)
+				// if last, replace with its equivalent return
+				if i == len(statements)-1 && node.Name != "main" {
+
+					returnAst := Return{Value: t.(Assignment).Left}
+					newEnv.UsedVariables[t.(Assignment).Left.(Identifier).StringValue] = true
+					//fmt.Printf("Adding %s as used", t.(Assignment).Left.(Identifier).StringValue)
+					newStatements = append(newStatements, returnAst)
+				}
+			}
+		default:
+			//fmt.Printf("Encountered %s\n", s.String())
+			t, err := s.Infer(&newEnv, nonGeneric)
+
+			if err != nil {
+				return nil, err
+			} else {
+				lastType = t.GetInferredType()
+
+				newStatements = append(newStatements, t)
+				//fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
+
+				if i == len(statements)-1 && node.Name != "main" {
+					returnAst := Return{Value: t}
+					newStatements = append(newStatements, returnAst)
+				}
+			}
+		}
+	}
+
+	if node.Name != "main" {
+		node.Subvalues = newStatements
+
+		// make our function type
+		fType := Function{Name: node.Name, Types: []Type{}}
+
+		// grab inferred types of args
+		if len(node.Arguments) > 0 {
+			for _, el := range node.Arguments {
+				fType.Types = append(fType.Types, newEnv.Env[el.(Identifier).StringValue])
+			}
+		}
+
+		// now the final type is the return type
+		fType.Types = append(fType.Types, lastType)
+		DiffState(*env, newEnv)
+		fType.Env = newEnv
+
+		(*env).Env[node.Name] = fType
+		node.InferredType = fType
+
+	} else {
+		// omit return
+		node.Subvalues = newStatements //[:len(newStatements)-1]
+
+		// make our function type
+		fType := Function{Name: node.Name, Types: []Type{}}
+
+		// grab inferred types of args
+		if len(node.Arguments) > 0 {
+			for _, el := range node.Arguments {
+				fType.Types = append(fType.Types, newEnv.Env[el.(Identifier).StringValue])
+			}
+		}
+
+		fType.Types = []Type{}
+		DiffState(*env, newEnv)
+		fType.Env = newEnv
+
+		(*env).Env[node.Name] = fType
+		node.InferredType = fType
+	}
+	return node, nil
+}
+
+func (node RecordField) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	var t Type
+	var err error
+	switch node.Type.(type) {
+	case BasicAst:
+		t, err = GetTypeFromAnnotation(node.Type.(BasicAst), env)
+	case Identifier:
+		t, err = GetTypeFromAnnotation(node.Type.(Identifier), env)
+	case Container:
+		t, err = GetTypeFromAnnotation(node.Type.(Container), env)
+	default:
+		panic(fmt.Sprintf("Do not know this type %s", node.Type))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	node.InferredType = t
+	return node, nil
+
+}
+
+func (node RecordType) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	for i, el := range node.Fields {
+		field, err := el.Infer(env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		node.Fields[i] = field.(RecordField)
+	}
+
+	var params []string
+	for _, p := range node.Params {
+		params = append(params, p.String())
+	}
+
+	fields := make(map[string]Type)
+	for _, p := range node.Fields {
+		fields[p.Name] = p.InferredType
+	}
+
+	env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
+	return node, nil
+}
+
+func (node Variant) Infer(env *State, nonGeneric []Type) (Ast, error) {
+
+	for i, el := range node.Constructors {
+		newEnv := State{Env: make(map[string]Type)}
+		CopyState(*env, newEnv)
+		newEnv.Env["__parent__"] = VariantType{Name: node.Name}
+		cons, err := el.Infer(&newEnv, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		node.Constructors[i] = cons.(VariantConstructor)
+		env.Env[el.Name] = cons.(VariantConstructor).GetInferredType()
+	}
+
+	var params []string
+	for _, p := range node.Params {
+		params = append(params, p.String())
+	}
+
+	concrete := true
+
+	for _, constructor := range node.Constructors {
+		for _, f := range constructor.InferredType.(VariantConstructorType).Types {
+			//fields = append(fields, f.GetName())
+			if f.GetName()[0] == '\'' {
+				concrete = false
+				break
+			}
+		}
+		//fields[p.Name] = p.InferredType
+	}
+
+	env.Env[node.Name] = VariantType{Name: node.Name, Params: params}
+
+	if concrete {
+
+		env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
+	}
+	return nil, nil
+}
+
+func (node VariantConstructor) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	parent := env.Env["__parent__"].(VariantType)
+
+	types := make([]Type, 0)
+
+	for i, field := range node.Fields {
+		//fmt.Println("Inferring variant constructor arg", field)
+		field, err := field.Infer(env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		node.Fields[i] = field
+		types = append(types, field.GetInferredType())
+	}
+
+	node.InferredType = VariantConstructorType{Name: node.Name, Parent: parent, Types: types}
+	env.Env[node.Name] = node.InferredType
+
+	return node, nil
+}
+
+func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	vType, ok := env.Env[node.Name]
+	if !ok {
+		return nil, InferenceError{"Don't know the type of this variable: " + node.Name}
+	}
+
+	for i, t := range vType.(VariantConstructorType).Types {
+		arg := node.Arguments[i]
+		arg, err := arg.Infer(env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		argType := arg.GetInferredType()
+		err = Unify(&argType, &t, env)
+		if err != nil {
+			return nil, InferenceError{fmt.Sprintf("Argument %d to %s doesn't match type %s", i+1, node.Name, t.GetName())}
+		}
+	}
+
+	node.InferredType = VariantInstanceType{Name: node.Name, Types: vType.(VariantConstructorType).Types}
+	return node, nil
+}
+
+func (node ExternRecordType) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	for i, el := range node.Fields {
+		field, err := el.Infer(env, nonGeneric)
+		if err != nil {
+			return nil, err
+		}
+		node.Fields[i] = field.(RecordField)
+	}
+
+	var params []string
+
+	fields := make(map[string]Type)
+	for _, p := range node.Fields {
+		fields[p.Name] = p.InferredType
+	}
+
+	env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
+	return node, nil
+}
+
+func (node RecordInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	el, ok := env.Env[node.Name]
+	if !ok {
+		return nil, InferenceError{"Don't know this type: " + node.String()}
+	}
+	node.InferredType = el
+	return node, nil
+}
+
+func (node RecordAccess) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	if len(node.Identifiers) < 2 {
+		return nil, InferenceError{"This record type has no fields: " + node.String()}
+	}
+	varName := node.Identifiers[0].StringValue
+	recordType, ok := env.Env[varName]
+	if !ok {
+		return nil, InferenceError{"Don't know the type of this variable: " + varName}
+	}
+	fieldName := node.Identifiers[1].StringValue
+	fieldType := recordType.(Record).Fields[fieldName]
+	node.Identifiers[1].StringValue = strings.Title(node.Identifiers[1].StringValue)
+	node.InferredType = fieldType
+	env.UsedVariables[varName] = true
+	return node, nil
+}
+
+func (node Return) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	return node, nil
+}
+
+func (node ExternFunc) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	// make our function type
+	fType := Function{Name: node.Name, External: "__go_" + StripImportPath(node.Import), Types: []Type{}}
+
+	// grab inferred types of args
+	if len(node.Arguments) > 0 {
+		for _, el := range node.Arguments {
+			// lookup the type from its annotation
+			//fmt.Println("looking up arg type annotation:", el.(Identifier).Annotation)
+			anno, err := GetTypeFromAnnotation(el.(Identifier).Annotation, env)
+			if err != nil {
+				return nil, err
+			}
+			fType.Types = append(fType.Types, anno)
+		}
+	}
+
+	// lookup return type annotation
+	//fmt.Println("looking up return type annotation:", node.ReturnAnnotation)
+	anno, err := GetTypeFromAnnotation(node.ReturnAnnotation, env)
+	if err != nil {
+		return nil, err
+	}
+	fType.Types = append(fType.Types, anno)
+	(*env).Env[node.Name] = fType
+	node.InferredType = fType
+
+	return node, nil
+}
+
 func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 	/*
 		Computes the type of the expression given by node.
@@ -190,847 +1041,6 @@ func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
 		Returns:
 			The computed type of the expression.
 	*/
-
-	switch node.(type) {
-
-	case Module:
-		node := node.(Module)
-		statements := node.Subvalues
-
-		var newStatements []Ast
-
-		for _, s := range statements {
-			switch s.(type) {
-			case Comment:
-				continue
-			default:
-				//fmt.Printf("Encountered %s\n", s.String())
-				t, err := Infer(s, env, nonGeneric)
-				if err != nil {
-					return nil, err
-				} else {
-					if t != nil {
-						newStatements = append(newStatements, t)
-					}
-					//fmt.Printf("Module infer %s: %s\n", s.String(), t.GetInferredType())
-				}
-			}
-		}
-		node.Subvalues = newStatements
-		//for _, s := range node.Subvalues {
-		//
-		//	fmt.Printf("Module infer %s: %s\n", s.String(), s.GetInferredType())
-		//}
-
-		//node.InferredType = Unit
-		env.Module = &node
-		return node, nil
-
-	case ExternFunc:
-		node := node.(ExternFunc)
-
-		// make our function type
-		fType := Function{Name: node.Name, External: "__go_" + StripImportPath(node.Import), Types: []Type{}}
-
-		// grab inferred types of args
-		if len(node.Arguments) > 0 {
-			for _, el := range node.Arguments {
-				// lookup the type from its annotation
-				//fmt.Println("looking up arg type annotation:", el.(Identifier).Annotation)
-				anno, err := GetTypeFromAnnotation(el.(Identifier).Annotation, env)
-				if err != nil {
-					return nil, err
-				}
-				fType.Types = append(fType.Types, anno)
-			}
-		}
-
-		// lookup return type annotation
-		//fmt.Println("looking up return type annotation:", node.ReturnAnnotation)
-		anno, err := GetTypeFromAnnotation(node.ReturnAnnotation, env)
-		if err != nil {
-			return nil, err
-		}
-		fType.Types = append(fType.Types, anno)
-		(*env).Env[node.Name] = fType
-		node.InferredType = fType
-
-		return node, nil
-
-	case BasicAst:
-		node := node.(BasicAst)
-		switch node.ValueType {
-		case CHAR:
-			node.InferredType = Rune
-			return node, nil
-		case INT:
-			node.InferredType = Integer
-			return node, nil
-		case FLOAT:
-			node.InferredType = Float
-			return node, nil
-		case BOOL:
-			node.InferredType = Boolean
-			return node, nil
-		case STRING:
-			node.InferredType = String
-			return node, nil
-		case NIL:
-			node.InferredType = Unit
-			return node, nil
-		}
-
-	case Operator:
-		node := node.(Operator)
-		switch node.ValueType {
-		case NUMBER:
-			node.InferredType = Number
-			return node, nil
-		case CHAR:
-			node.InferredType = Rune
-			return node, nil
-		case INT:
-			node.InferredType = Integer
-			return node, nil
-		case FLOAT:
-			node.InferredType = Float
-			return node, nil
-		case BOOL:
-			node.InferredType = Boolean
-			return node, nil
-		case STRING:
-			node.InferredType = String
-			return node, nil
-		}
-
-	case Comment:
-		node := node.(Comment)
-		//node.InferredType = Unit
-		return node, nil
-
-	case Assignment:
-		node := node.(Assignment)
-		right := node.Right
-		//fmt.Printf("Encountered %s\n", right.String())
-		rightSide, err := Infer(right, env, nonGeneric)
-		if err != nil {
-			return nil, err
-		}
-
-		///fmt.Println("right side type:", rightSide.GetInferredType())
-		if node.Left.(Identifier).StringValue != "_" {
-			name := node.Left.(Identifier).StringValue
-
-			if _, ok := (*env).Env[name]; ok {
-				return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
-			}
-
-			(*env).Env[name] = rightSide.GetInferredType()
-
-		}
-
-		left := Identifier{StringValue: node.Left.(Identifier).StringValue,
-			InferredType: rightSide.GetInferredType()}
-
-		// check in case this is a typevar already stored
-		if t, ok := (*env).Env[rightSide.GetInferredType().GetName()]; ok {
-			(*env).Env[left.StringValue] = t
-			left.InferredType = t
-		}
-
-		node.Right = rightSide
-		node.Left = left
-		node.InferredType = left.GetInferredType()
-
-		return node, nil
-
-	case Identifier:
-		node := node.(Identifier)
-		if node.StringValue == "_" {
-			node.InferredType = NewTypeVariable()
-			return node, nil
-		}
-
-		if node.StringValue[0] == '\'' {
-			node.InferredType = NewTypeVariable()
-			return node, nil
-		}
-
-		t, err := GetType(node.StringValue, *env, nonGeneric)
-		if err != nil {
-			return nil, err
-		}
-		(*env).UsedVariables[node.StringValue] = true
-		node.InferredType = t
-		return node, nil
-
-	case Call:
-		node := node.(Call)
-		fType := (*env).Env[node.Function.StringValue]
-		if fType == nil {
-			return nil, InferenceError{"Do not know the type of function " + node.Function.StringValue}
-		}
-
-		// remove one type for return type
-		if len(node.Arguments) != len(fType.(Function).Types)-1 {
-			return nil, InferenceError{fmt.Sprintf("Called function %s with %d argument%s, but it takes %d",
-				node.Function, len(node.Arguments),
-				func() string {
-					if len(node.Arguments) == 1 {
-						return ""
-					}
-					return "s"
-				}(),
-				len(fType.(Function).Types)-1)}
-		}
-		// infer call args so they get marked as used, and eventually unify with func defn args
-		for i, el := range node.Arguments {
-
-			fArg := fType.(Function).Types[i]
-
-			// infer arg
-			el, err := Infer(el, env, nonGeneric)
-			if err != nil {
-				return nil, err
-			}
-
-			t := el.GetInferredType()
-
-			// now unify matching func arg type
-			err = Unify(&t, &fArg, env)
-			if err != nil {
-				return nil, err
-			}
-
-		}
-
-		types := fType.(Function).Types
-		node.InferredType = types[len(types)-1]
-		(*env).UsedVariables[node.Function.StringValue] = true
-
-		// if external func, rewrite to original func name and module
-		if fType.(Function).External != "" {
-			node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[0]}
-			node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[1]}
-		}
-		//fmt.Println((*env).UsedVariables)
-		return node, nil
-
-	case BinOp:
-		//fmt.Printf("Encountered %s\n", node.String())
-		node := node.(BinOp)
-		operator := node.Operator
-		op, err := Infer(operator, env, nonGeneric)
-		//fmt.Printf("Encountered %s\n", op.String())
-		if err != nil {
-			return nil, err
-		}
-
-		l := node.Left
-
-		left, err := Infer(l, env, nonGeneric)
-
-		if err != nil {
-			return nil, err
-		}
-
-		r := node.Right
-		right, err := Infer(r, env, nonGeneric)
-		if err != nil {
-			return nil, err
-		}
-
-		node.Left = left
-		node.Right = right
-		node.Operator = op
-		lType := left.GetInferredType()
-		rType := right.GetInferredType()
-		err = Unify(&lType, &rType, env)
-		if err != nil {
-			return nil, err
-		}
-
-		// number is a convenience for how go handles ops with floats and ints
-		// if we see it, be more specific by using the left type
-		if op.GetInferredType().GetName() == Number.GetName() {
-			node.InferredType = lType
-			// that they've been unified
-		} else {
-			node.InferredType = op.GetInferredType()
-			Unify(&lType, &node.InferredType, env)
-			Unify(&rType, &node.InferredType, env)
-		}
-
-		return node, nil
-
-	case Container:
-		node := node.(Container)
-
-		return node, nil
-
-	case If:
-		node := node.(If)
-
-		node.TempVar = NewTempVariable()
-		(*env).UsedVariables[node.TempVar] = true
-		//fmt.Println("new temp var", node.TempVar)
-
-		ifAst := node.Condition
-		condition, err := Infer(ifAst, env, nonGeneric)
-		if err != nil {
-			return nil, err
-		}
-
-		if condition.GetInferredType().GetType() != Boolean.GetType() {
-			return nil, InferenceError{"Condition must be a boolean"}
-		}
-
-		statements := node.Then
-		var thenType Type
-		var elseType Type
-
-		// infer all statements
-		newStatements := []Ast{}
-
-		for i, s := range statements {
-			switch s.(type) {
-			case BasicAst, Expr, BinOp:
-				t, err := Infer(s, env, nonGeneric)
-				thenType = t.GetInferredType()
-
-				if err != nil {
-					return nil, err
-				} else {
-
-					if i == len(statements)-1 {
-						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-							Right: t, Update: true}
-
-						newStatements = append(newStatements, assign)
-					} else {
-						newStatements = append(newStatements, t)
-					}
-					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
-				}
-
-			case Assignment:
-				t, err := Infer(s, env, nonGeneric)
-				thenType = t.GetInferredType()
-
-				if err != nil {
-					return nil, err
-				} else {
-					newStatements = append(newStatements, t)
-					if i == len(statements)-1 {
-						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-							Right: t.(Assignment).Left, Update: true}
-						newStatements = append(newStatements, assign)
-					}
-					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
-				}
-			default:
-
-				t, err := Infer(s, env, nonGeneric)
-				thenType = t.GetInferredType()
-
-				if err != nil {
-					return nil, err
-				} else {
-					newStatements = append(newStatements, t)
-					if i == len(statements)-1 {
-						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-							Right: t, Update: true}
-
-						newStatements = append(newStatements, assign)
-					}
-					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
-				}
-			}
-		}
-
-		node.Then = newStatements
-
-		statements = node.Else
-		newStatements = []Ast{}
-
-		// infer all statements
-		for i, s := range statements {
-			switch s.(type) {
-			case BasicAst, BinOp, Expr:
-				t, err := Infer(s, env, nonGeneric)
-				thenType = t.GetInferredType()
-
-				if err != nil {
-					return nil, err
-				} else {
-
-					if i == len(statements)-1 {
-						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-							Right: t, Update: true}
-						newStatements = append(newStatements, assign)
-					} else {
-						newStatements = append(newStatements, t)
-					}
-					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
-				}
-			case Assignment:
-				t, err := Infer(s, env, nonGeneric)
-				thenType = t.GetInferredType()
-
-				if err != nil {
-					return nil, err
-				} else {
-					newStatements = append(newStatements, t)
-					if i == len(statements)-1 {
-						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-							Right: t.(Assignment).Left, Update: true}
-						newStatements = append(newStatements, assign)
-					}
-					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
-				}
-			default:
-
-				t, err := Infer(s, env, nonGeneric)
-				thenType = t.GetInferredType()
-
-				if err != nil {
-					return nil, err
-				} else {
-					newStatements = append(newStatements, t)
-					if i == len(statements)-1 {
-						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-							Right: t, Update: true}
-						newStatements = append(newStatements, assign)
-					}
-					//fmt.Printf("Infer Then: %s\n", thenType.GetName())
-				}
-			}
-		}
-
-		node.Else = newStatements
-
-		if elseType != nil {
-			err = Unify(&thenType, &elseType, env)
-			if err != nil {
-				return nil, err
-			}
-			node.InferredType = elseType
-
-		} else {
-			node.InferredType = thenType
-		}
-
-		return node, nil
-
-	case ArrayType:
-		node := node.(ArrayType)
-		var lastType Type
-		var newValues []Ast
-
-		for _, s := range node.Subvalues {
-			t, err := Infer(s, env, nonGeneric)
-			tType := t.GetInferredType()
-
-			if err != nil {
-				return nil, err
-			}
-			if lastType != nil {
-
-				err := Unify(&tType, &lastType, env)
-				if err != nil {
-					return nil, err
-				}
-			}
-			lastType = tType
-			newValues = append(newValues, t)
-
-			if err != nil {
-				//fmt.Println(err.Error())
-				return nil, err
-			} else {
-				//fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
-			}
-		}
-		node.Subvalues = newValues
-		node.InferredType = lastType
-		//fmt.Println("Array type is", lastType.GetName())
-		return node, nil
-
-	case Expr:
-		node := node.(Expr)
-		var lastType Type
-		newValues := []Ast{}
-
-		for _, s := range node.Subvalues {
-			//fmt.Printf("Encountered %s\n", s.String())
-			t, err := Infer(s, env, nonGeneric)
-
-			if err != nil {
-				return nil, err
-			}
-			tType := t.GetInferredType()
-			if lastType != nil {
-
-				err := Unify(&tType, &lastType, env)
-				if err != nil {
-					return nil, err
-				}
-			}
-			lastType = tType
-			newValues = append(newValues, t)
-
-			//fmt.Printf("Infer %s: %s\n", s.String(), lastType.GetName())
-
-		}
-		node.Subvalues = newValues
-		// why are we updating the type from the env here?
-		if t, ok := (*env).Env[lastType.GetName()]; ok {
-			lastType = t
-		}
-		node.InferredType = lastType
-		return node, nil
-
-	case Func:
-		node := node.(Func)
-		statements := node.Subvalues
-		var newStatements []Ast
-		var lastType Type
-		var newEnv = State{Env: make(map[string]Type), UsedVariables: make(map[string]bool)}
-		CopyState(*env, newEnv)
-
-		// init
-		// argument names as type variables ready to be filled
-		if len(node.Arguments) > 0 {
-			for _, el := range node.Arguments {
-				newType := NewTypeVariable()
-				newEnv.Env[el.(Identifier).StringValue] = newType
-				if el.(Identifier).Annotation != nil {
-					t, err := GetTypeFromAnnotation(el.(Identifier).Annotation, env)
-					if err != nil {
-						return nil, InferenceError{fmt.Sprintf("Cannot understand type annotation %s: %s",
-							el.(Identifier).StringValue,
-							el.(Identifier).Annotation)}
-					}
-
-					Unify(&t, &newType, &newEnv)
-					newEnv.Env[el.(Identifier).StringValue] = t
-				}
-			}
-		}
-
-		if _, ok := (*env).Env[node.Name]; ok {
-			return nil, InferenceError{"Cannot redeclare func " + node.Name + ", it is already declared"}
-		}
-
-		// infer all statements
-		for i, s := range statements {
-			switch s.(type) {
-			case If:
-				t, err := Infer(s, &newEnv, nonGeneric)
-
-				if err != nil {
-					return nil, err
-				} else {
-					lastType = t.GetInferredType()
-					newStatements = append(newStatements, t)
-					// if last, replace with its equivalent return
-					if i == len(statements)-1 && node.Name != "main" {
-						returnAst := Return{Value: Identifier{StringValue: t.(If).TempVar}}
-						newEnv.UsedVariables[t.(If).TempVar] = true
-						newStatements = append(newStatements, returnAst)
-					}
-				}
-			case Expr:
-				t, err := Infer(s, &newEnv, nonGeneric)
-
-				if err != nil {
-					return nil, err
-				} else {
-					lastType = t.GetInferredType()
-					// if last, replace with its equivalent return
-					if i == len(statements)-1 && lastType.GetName() != Unit.GetName() && node.Name != "main" {
-						returnAst := Return{Value: t}
-						newStatements = append(newStatements, returnAst)
-
-					} else {
-						newStatements = append(newStatements, t)
-					}
-				}
-			case BinOp:
-				t, err := Infer(s, &newEnv, nonGeneric)
-
-				if err != nil {
-					return nil, err
-				} else {
-					lastType = t.GetInferredType()
-
-					// if last, replace with its equivalent return
-					if i == len(statements)-1 && node.Name != "main" {
-						returnAst := Return{Value: t}
-						newStatements = append(newStatements, returnAst)
-					} else {
-						newStatements = append(newStatements, t)
-					}
-				}
-			case Assignment:
-				t, err := Infer(s, &newEnv, nonGeneric)
-
-				if err != nil {
-					return nil, err
-				} else {
-					lastType = t.GetInferredType()
-					newStatements = append(newStatements, t)
-					// if last, replace with its equivalent return
-					if i == len(statements)-1 && node.Name != "main" {
-
-						returnAst := Return{Value: t.(Assignment).Left}
-						newEnv.UsedVariables[t.(Assignment).Left.(Identifier).StringValue] = true
-						//fmt.Printf("Adding %s as used", t.(Assignment).Left.(Identifier).StringValue)
-						newStatements = append(newStatements, returnAst)
-					}
-				}
-			default:
-				//fmt.Printf("Encountered %s\n", s.String())
-				t, err := Infer(s, &newEnv, nonGeneric)
-
-				if err != nil {
-					return nil, err
-				} else {
-					lastType = t.GetInferredType()
-
-					newStatements = append(newStatements, t)
-					//fmt.Printf("Func infer %s: %s\n", s.String(), lastType)
-
-					if i == len(statements)-1 && node.Name != "main" {
-						returnAst := Return{Value: t}
-						newStatements = append(newStatements, returnAst)
-					}
-				}
-			}
-		}
-
-		if node.Name != "main" {
-			node.Subvalues = newStatements
-
-			// make our function type
-			fType := Function{Name: node.Name, Types: []Type{}}
-
-			// grab inferred types of args
-			if len(node.Arguments) > 0 {
-				for _, el := range node.Arguments {
-					fType.Types = append(fType.Types, newEnv.Env[el.(Identifier).StringValue])
-				}
-			}
-
-			// now the final type is the return type
-			fType.Types = append(fType.Types, lastType)
-			DiffState(*env, newEnv)
-			fType.Env = newEnv
-
-			(*env).Env[node.Name] = fType
-			node.InferredType = fType
-
-		} else {
-			// omit return
-			node.Subvalues = newStatements //[:len(newStatements)-1]
-
-			// make our function type
-			fType := Function{Name: node.Name, Types: []Type{}}
-
-			// grab inferred types of args
-			if len(node.Arguments) > 0 {
-				for _, el := range node.Arguments {
-					fType.Types = append(fType.Types, newEnv.Env[el.(Identifier).StringValue])
-				}
-			}
-
-			fType.Types = []Type{}
-			DiffState(*env, newEnv)
-			fType.Env = newEnv
-
-			(*env).Env[node.Name] = fType
-			node.InferredType = fType
-		}
-		return node, nil
-	case RecordField:
-		node := node.(RecordField)
-		var t Type
-		var err error
-		switch node.Type.(type) {
-		case BasicAst:
-			t, err = GetTypeFromAnnotation(node.Type.(BasicAst), env)
-		case Identifier:
-			t, err = GetTypeFromAnnotation(node.Type.(Identifier), env)
-		case Container:
-			t, err = GetTypeFromAnnotation(node.Type.(Container), env)
-		default:
-			panic(fmt.Sprintf("Do not know this type %s", node.Type))
-		}
-
-		if err != nil {
-			return nil, err
-		}
-		node.InferredType = t
-		return node, nil
-
-	case RecordType:
-		node := node.(RecordType)
-		for i, el := range node.Fields {
-			field, err := Infer(el, env, nonGeneric)
-			if err != nil {
-				return nil, err
-			}
-			node.Fields[i] = field.(RecordField)
-		}
-
-		var params []string
-		for _, p := range node.Params {
-			params = append(params, p.String())
-		}
-
-		fields := make(map[string]Type)
-		for _, p := range node.Fields {
-			fields[p.Name] = p.InferredType
-		}
-
-		env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
-		return node, nil
-	case Variant:
-		node := node.(Variant)
-		for i, el := range node.Constructors {
-			newEnv := State{Env: make(map[string]Type)}
-			CopyState(*env, newEnv)
-			newEnv.Env["__parent__"] = VariantType{Name: node.Name}
-			cons, err := Infer(el, &newEnv, nonGeneric)
-			if err != nil {
-				return nil, err
-			}
-			node.Constructors[i] = cons.(VariantConstructor)
-			env.Env[el.Name] = cons.(VariantConstructor).GetInferredType()
-		}
-
-		var params []string
-		for _, p := range node.Params {
-			params = append(params, p.String())
-		}
-
-		concrete := true
-
-		for _, constructor := range node.Constructors {
-			for _, f := range constructor.InferredType.(VariantConstructorType).Types {
-				//fields = append(fields, f.GetName())
-				if f.GetName()[0] == '\'' {
-					concrete = false
-					break
-				}
-			}
-			//fields[p.Name] = p.InferredType
-		}
-
-		env.Env[node.Name] = VariantType{Name: node.Name, Params: params}
-
-		if concrete {
-
-			env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
-		}
-		return nil, nil
-
-	case VariantConstructor:
-		// TODO: this needs to actually make a type
-		node := node.(VariantConstructor)
-		parent := env.Env["__parent__"].(VariantType)
-
-		types := make([]Type, 0)
-
-		for i, field := range node.Fields {
-			//fmt.Println("Inferring variant constructor arg", field)
-			field, err := Infer(field, env, nonGeneric)
-			if err != nil {
-				return nil, err
-			}
-			node.Fields[i] = field
-			types = append(types, field.GetInferredType())
-		}
-
-		node.InferredType = VariantConstructorType{Name: node.Name, Parent: parent, Types: types}
-		env.Env[node.Name] = node.InferredType
-
-		return node, nil
-
-	case VariantInstance:
-		// TODO: implement
-		// We need to look up the constructor in env and make sure it exists
-		// We then need to unify this instance's arguments with the constructor's types
-		// If the constructor's types weren't concrete before, we need to add a
-		// new ConcreteType for the variant to the module
-		//
-		node := node.(VariantInstance)
-		vType, ok := env.Env[node.Name]
-		if !ok {
-			return nil, InferenceError{"Don't know the type of this variable: " + node.Name}
-		}
-
-		for i, t := range vType.(VariantConstructorType).Types {
-			arg := node.Arguments[i]
-			arg, err := Infer(arg, env, nonGeneric)
-			if err != nil {
-				return nil, err
-			}
-			argType := arg.GetInferredType()
-			err = Unify(&argType, &t, env)
-			if err != nil {
-				return nil, InferenceError{fmt.Sprintf("Argument %d to %s doesn't match type %s", i+1, node.Name, t.GetName())}
-			}
-		}
-
-		node.InferredType = VariantInstanceType{Name: node.Name, Types: vType.(VariantConstructorType).Types}
-		return node, nil
-	case ExternRecordType:
-		node := node.(ExternRecordType)
-		for i, el := range node.Fields {
-			field, err := Infer(el, env, nonGeneric)
-			if err != nil {
-				return nil, err
-			}
-			node.Fields[i] = field.(RecordField)
-		}
-
-		var params []string
-
-		fields := make(map[string]Type)
-		for _, p := range node.Fields {
-			fields[p.Name] = p.InferredType
-		}
-
-		env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
-		return node, nil
-	case RecordInstance:
-		node := node.(RecordInstance)
-		el, ok := env.Env[node.Name]
-		if !ok {
-			return nil, InferenceError{"Don't know this type: " + node.String()}
-		}
-		node.InferredType = el
-		return node, nil
-	case RecordAccess:
-		node := node.(RecordAccess)
-		if len(node.Identifiers) < 2 {
-			return nil, InferenceError{"This record type has no fields: " + node.String()}
-		}
-		varName := node.Identifiers[0].StringValue
-		recordType, ok := env.Env[varName]
-		if !ok {
-			return nil, InferenceError{"Don't know the type of this variable: " + varName}
-		}
-		fieldName := node.Identifiers[1].StringValue
-		fieldType := recordType.(Record).Fields[fieldName]
-		node.Identifiers[1].StringValue = strings.Title(node.Identifiers[1].StringValue)
-		node.InferredType = fieldType
-		env.UsedVariables[varName] = true
-		return node, nil
-	default:
-		panic(fmt.Sprintf("Don't know this type (\"%s\"): %s", node.String(), node.Print(0)))
-	}
 
 	return nil, InferenceError{fmt.Sprintf("Don't know this type: %s", node.Print(0))}
 }
