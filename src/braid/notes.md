@@ -25,6 +25,12 @@ let add = (a, b) {
 
 add(5, 6);
 Mod.add(5, 6);
+
+let thing = 
+    match (result) {
+    | Some(v) => v
+    | None => "Nothing"
+    }
 ```
 
 ### Type declarations
@@ -33,6 +39,8 @@ Mod.add(5, 6);
 type Result ('a, 'b) = 
 | OK 'a
 | Error 'b
+
+(should this syntax look more Go-y?)
 
 type MyPayload = {data: string}
 type Person = {age: int, name: string}
@@ -108,6 +116,15 @@ type StringPeople = List VaguePerson string // or `VaguePeople string`
   
 [ ] Linking (Look up modules - Do they exist? Do functions mentioned exist?)
 
+### Making variant types concrete
+We have issues with checking types from the environment - related types are not updated,
+the best option seems to be to keep a related type's name only, then look it up.
+
+[X] Maybe change struct to hold names (strings) only, not the related type.
+
+[X] Use a single struct for the whole variant, a `uint8` to hold its instance type, and `[]interface{}` to hold its types. 
+[ ] Use `reflect` package to get the right data type out.
+[ ] Introduct `match` expression
 
 ### Generating source
 [ ] Do we need another pass, after inference, that removes unused code, fixes returns, etc.?

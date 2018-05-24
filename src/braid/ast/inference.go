@@ -63,18 +63,20 @@ type Record struct {
 }
 
 type VariantInstanceType struct {
-	Name  string
-	Types []Type
+	Name        string
+	Constructor string
+	Types       []Type
 }
 
 type VariantType struct {
-	Name   string
-	Params []string
+	Name         string
+	Params       []string
+	Constructors []string
 }
 
 type VariantConstructorType struct {
 	Name   string
-	Parent VariantType
+	Parent string
 	Types  []Type
 }
 
@@ -107,7 +109,7 @@ func (v VariantConstructorType) GetName() string {
 }
 
 func (v VariantConstructorType) GetType() string {
-	return v.Parent.Name + "." + v.Name
+	return v.Parent + "." + v.Name
 }
 
 func (f Function) String() string {
@@ -875,26 +877,40 @@ func (node Variant) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		params = append(params, p.String())
 	}
 
-	concrete := true
-
-	for _, constructor := range node.Constructors {
-		for _, f := range constructor.InferredType.(VariantConstructorType).Types {
-			//fields = append(fields, f.GetName())
-			if f.GetName()[0] == '\'' {
-				concrete = false
-				break
-			}
-		}
-		//fields[p.Name] = p.InferredType
+	// get all of the types for each constructor, store in parent type
+	consTypes := make([]string, 0)
+	for _, c := range node.Constructors {
+		consTypes = append(consTypes, c.GetInferredType().GetName())
 	}
 
-	env.Env[node.Name] = VariantType{Name: node.Name, Params: params}
+	env.Env[node.Name] = VariantType{Name: node.Name, Params: params, Constructors: consTypes}
+	node.InferredType = env.Env[node.Name]
 
-	if concrete {
+	// concrete := node.InferredType.(VariantType).checkConcrete()
+	// if concrete {
+	// 	env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
+	// }
 
-		env.Module.ConcreteTypes = append(env.Module.ConcreteTypes, node)
-	}
-	return nil, nil
+	return node, nil
+}
+
+func (node VariantType) checkConcrete() bool {
+	// concrete := true
+
+	// for _, constructor := range node.Constructors {
+	// 	for _, f := range constructor.(VariantConstructorType).Types {
+	// 		//fields = append(fields, f.GetName())
+	// 		fmt.Printf("check concrete: %s\n", f.GetName())
+	// 		if f.GetName()[0] == '\'' {
+	// 			concrete = false
+	// 			break
+	// 		}
+	// 	}
+	// 	//fields[p.Name] = p.InferredType
+	// }
+	// fmt.Println(node.GetName(), "concrete status:", concrete)
+	// return concrete
+	return true
 }
 
 func (node VariantConstructor) Infer(env *State, nonGeneric []Type) (Ast, error) {
@@ -903,7 +919,6 @@ func (node VariantConstructor) Infer(env *State, nonGeneric []Type) (Ast, error)
 	types := make([]Type, 0)
 
 	for i, field := range node.Fields {
-		//fmt.Println("Inferring variant constructor arg", field)
 		field, err := field.Infer(env, nonGeneric)
 		if err != nil {
 			return nil, err
@@ -912,7 +927,7 @@ func (node VariantConstructor) Infer(env *State, nonGeneric []Type) (Ast, error)
 		types = append(types, field.GetInferredType())
 	}
 
-	node.InferredType = VariantConstructorType{Name: node.Name, Parent: parent, Types: types}
+	node.InferredType = VariantConstructorType{Name: node.Name, Parent: parent.GetName(), Types: types}
 	env.Env[node.Name] = node.InferredType
 
 	return node, nil
@@ -920,8 +935,14 @@ func (node VariantConstructor) Infer(env *State, nonGeneric []Type) (Ast, error)
 
 func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	vType, ok := env.Env[node.Name]
+	pName := vType.(VariantConstructorType).Parent
 	if !ok {
 		return nil, InferenceError{"Don't know the type of this variable: " + node.Name}
+	}
+
+	if len(node.Arguments) != len(vType.(VariantConstructorType).Types) {
+		return nil, InferenceError{fmt.Sprintf("%s required %d arguments, but was supplied with %d",
+			node.Name, len(vType.(VariantConstructorType).Types), len(node.Arguments))}
 	}
 
 	for i, t := range vType.(VariantConstructorType).Types {
@@ -931,13 +952,24 @@ func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			return nil, err
 		}
 		argType := arg.GetInferredType()
+		//fmt.Println(node.Name, "arg type is", argType)
 		err = Unify(&argType, &t, env)
 		if err != nil {
 			return nil, InferenceError{fmt.Sprintf("Argument %d to %s doesn't match type %s", i+1, node.Name, t.GetName())}
 		}
 	}
 
-	node.InferredType = VariantInstanceType{Name: node.Name, Types: vType.(VariantConstructorType).Types}
+	//pType := env.Env[vType.(VariantConstructorType).Parent].(VariantType)
+	// concrete := pType.checkConcrete()
+	// if concrete {
+	// 	// TODO: promote parent node to concrete
+	// 	fmt.Printf("make %s concrete\n", vType.(VariantConstructorType).Parent)
+	// }
+
+	node.InferredType = VariantInstanceType{Name: pName, Types: vType.(VariantConstructorType).Types}
+	node.Name = pName
+	// TODO: lookup constructor and use appropriate value
+	node.Constructor = 0
 	return node, nil
 }
 
@@ -988,6 +1020,7 @@ func (node RecordAccess) Infer(env *State, nonGeneric []Type) (Ast, error) {
 }
 
 func (node Return) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	// added by inference passes, should not need checking
 	return node, nil
 }
 
@@ -1019,30 +1052,6 @@ func (node ExternFunc) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	node.InferredType = fType
 
 	return node, nil
-}
-
-func Infer(node Ast, env *State, nonGeneric []Type) (Ast, error) {
-	/*
-		Computes the type of the expression given by node.
-
-		The type of the node is computed in the context of the context of the
-		supplied type environment env. Data types can be introduced into the
-		language simply by having a predefined set of identifiers in the initial
-		environment; this way there is no need to change the syntax or, more
-		importantly, the type-checking program when extending the language.
-
-		Args:
-			node: The root of the abstract syntax tree.
-			env: The type environment is a mapping of expression identifier names
-				to type assignments.
-				to type assignments.
-			non_generic: A set of non-generic variables, or None
-
-		Returns:
-			The computed type of the expression.
-	*/
-
-	return nil, InferenceError{fmt.Sprintf("Don't know this type: %s", node.Print(0))}
 }
 
 func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {

@@ -351,9 +351,10 @@ func (a VariantInstance) Compile(state State) (string, State) {
 			state = s
 			args = append(args, value)
 		}
+		result += fmt.Sprintf("%d, []interface{}{", a.Constructor)
 		result += strings.Join(args, ", ")
 	}
-	result += "}\n"
+	result += "}}\n"
 
 	return result, state
 }
@@ -524,32 +525,63 @@ func (r RecordType) Compile(state State) (string, State) {
 
 func (v Variant) Compile(state State) (string, State) {
 	// TODO: Only compile once we have concrete implementations
-	str := "type " + v.Name + " interface {\n" +
-		"\tsealed" + v.Name + "()\n" +
+
+	// typeList := make([]string, 0)
+	// parentType := state.Env[v.GetInferredType().GetName()]
+
+	// for _, cons := range parentType.(VariantType).Constructors {
+	// 	for _, t := range cons.(VariantConstructorType).Types {
+	// 		typeList = append(typeList, t.GetName())
+	// 	}
+	// }
+	// types := strings.Join(typeList, "")
+	name := v.Name
+
+	str := ""
+	// str := "type " + name + " interface {\n" +
+	// 	"\tsealed" + name + "()\n" +
+	// 	"}\n\n"
+
+	// for _, el := range v.Constructors {
+	// 	value, s := el.Compile(state)
+
+	// 	str += value
+	// 	state = s
+	// }
+
+	str += "type " + name + " struct {\n" +
+		"\tConstructor uint8\n" +
+		"\tFields []interface{}\n" +
 		"}\n\n"
-
-	for _, el := range v.Constructors {
-		value, s := el.Compile(state)
-
-		str += value
-		state = s
-	}
 
 	return str, state
 	//return "", state
 }
 
 func (c VariantConstructor) Compile(state State) (string, State) {
-	str := "type " + c.Name + " struct {\n"
-	for i, el := range c.Fields {
-		value, s := el.Compile(state)
-		state = s
-		str += fmt.Sprintf("\tF%d", i) + " " + value
-	}
-	str += "\n}\n\n"
 
-	// implement sealed
-	str += "func (*" + c.Name + ") sealed" + c.InferredType.(VariantConstructorType).Parent.Name + "() {}\n\n"
+	// parentType := state.Env[c.InferredType.(VariantConstructorType).Parent.GetName()]
+
+	// typeList := make([]string, 0)
+	// for _, cons := range parentType.(VariantType).Constructors {
+	// 	for _, t := range cons.(VariantConstructorType).Types {
+	// 		typeList = append(typeList, t.GetName())
+	// 	}
+	// }
+	// types := strings.Join(typeList, "")
+	// name := fmt.Sprintf("%s_%s_%s", parentType.GetName(), c.Name, types)
+
+	// str := "type " + name + " struct {\n"
+	// for i, el := range c.Fields {
+	// 	value, s := el.Compile(state)
+	// 	state = s
+	// 	str += fmt.Sprintf("\tF%d", i) + " " + value
+	// }
+	// str += "\n}\n\n"
+
+	// // implement sealed
+	// str += "func (*" + name + ") sealed" + c.InferredType.(VariantConstructorType).Parent.Name + "_" + types + "() {}\n\n"
+	str := ""
 
 	return str, state
 }

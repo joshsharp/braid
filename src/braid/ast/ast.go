@@ -98,6 +98,7 @@ type RecordAccess struct {
 
 type VariantInstance struct {
 	Name         string
+	Constructor  int
 	Arguments    []Ast
 	InferredType Type
 }

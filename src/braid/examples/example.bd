@@ -35,7 +35,7 @@ let main = {
 	let a = something()
 	let yumPizza = cheesy("pineapple", ("bbq" ++ "sauce"))
 	println(yumPizza)
-	printf1("Woo I can print %s", "6")
+	printf1("Woo I can print %s\n", "6")
 	println("Again!")
 	// some comment
 	let five = 1 / 1 + 3 * (55 - 2)

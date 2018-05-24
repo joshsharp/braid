@@ -895,12 +895,12 @@ Unit = "()" {
     return BasicAst{Type:"Unit", ValueType:NIL}, nil
 }
 
-StringLiteral = '"' (!EscapedChar .)* '"' {
-    val, err := strconv.Unquote(string(c.text))
-    if err == nil {
-        return BasicAst{Type:"String", StringValue: val, ValueType:STRING}, nil
-    }
-    return nil, err
+StringLiteral = '"' ([^\r\n"])* '"' {
+    val := string(c.text[1:len(c.text)-1])
+    
+    return BasicAst{Type:"String", StringValue: val, ValueType:STRING}, nil
+    
+    //return nil, err
 }
 
 Unused = ('_') {

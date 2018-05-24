@@ -8,7 +8,7 @@ extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(Resp
 extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
 
 let hello = (w: ResponseWriter, request: Request) -> (){
-    fprintf(w, "Hello world!")
+    fprintf(w, "Hello world!\n")
     
 }
 
