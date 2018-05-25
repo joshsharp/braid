@@ -26,10 +26,9 @@ let add = (a, b) {
 add(5, 6);
 Mod.add(5, 6);
 
-let thing = 
-    match (result) {
-    | Some(v) => v
-    | None => "Nothing"
+let thing = match (result) {
+    Some(v) => v,
+    None => "Nothing",
     }
 ```
 

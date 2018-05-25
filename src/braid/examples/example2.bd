@@ -10,6 +10,12 @@ type Result ('a, 'b) =
 	| Ok 'a
 	| Error 'b
 
+type Fruit =
+	| Peach
+	| Plum
+	| Pear
+	| Watermelon
+
 type Person = {
 	name: string,
 	age: int64,
@@ -19,6 +25,8 @@ let main = {
 	let mm = Ok("Delicious")
 	let meh = Error(0)
 	let ugh = ErrorS("Bad smell")
+	let another = OkS("yo", "bro")
+	let juicy = Watermelon()
 	let josh = Person{name: "Josh", age: 99}
 	println(josh.name)
 }

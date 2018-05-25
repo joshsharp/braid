@@ -945,6 +945,8 @@ func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			node.Name, len(vType.(VariantConstructorType).Types), len(node.Arguments))}
 	}
 
+	types := []Type{}
+
 	for i, t := range vType.(VariantConstructorType).Types {
 		arg := node.Arguments[i]
 		arg, err := arg.Infer(env, nonGeneric)
@@ -952,24 +954,25 @@ func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			return nil, err
 		}
 		argType := arg.GetInferredType()
+
 		//fmt.Println(node.Name, "arg type is", argType)
 		err = Unify(&argType, &t, env)
 		if err != nil {
 			return nil, InferenceError{fmt.Sprintf("Argument %d to %s doesn't match type %s", i+1, node.Name, t.GetName())}
 		}
+		types = append(types, argType)
 	}
 
-	//pType := env.Env[vType.(VariantConstructorType).Parent].(VariantType)
-	// concrete := pType.checkConcrete()
-	// if concrete {
-	// 	// TODO: promote parent node to concrete
-	// 	fmt.Printf("make %s concrete\n", vType.(VariantConstructorType).Parent)
-	// }
-
-	node.InferredType = VariantInstanceType{Name: pName, Types: vType.(VariantConstructorType).Types}
+	pType := env.Env[vType.(VariantConstructorType).Parent].(VariantType)
+	for i, el := range pType.Constructors {
+		if el == node.Name {
+			node.Constructor = i
+			break
+		}
+	}
+	node.InferredType = VariantInstanceType{Name: pName, Types: types}
+	// switch this to be a parent type
 	node.Name = pName
-	// TODO: lookup constructor and use appropriate value
-	node.Constructor = 0
 	return node, nil
 }
 

@@ -341,44 +341,6 @@ func (a Call) Compile(state State) (string, State) {
 	return result, state
 }
 
-func (a VariantInstance) Compile(state State) (string, State) {
-	result := ""
-	result += a.Name + "{"
-	if len(a.Arguments) > 0 {
-		args := make([]string, 0)
-		for _, el := range a.Arguments {
-			value, s := el.Compile(state)
-			state = s
-			args = append(args, value)
-		}
-		result += fmt.Sprintf("%d, []interface{}{", a.Constructor)
-		result += strings.Join(args, ", ")
-	}
-	result += "}}\n"
-
-	return result, state
-}
-
-func (a RecordInstance) Compile(state State) (string, State) {
-	result := ""
-	result += a.Name + "{"
-	if len(a.Values) > 0 {
-		args := make([]string, 0)
-		for key, el := range a.Values {
-			val := ""
-			val += strings.Title(key) + ": "
-			value, s := el.Compile(state)
-			val += value
-			state = s
-			args = append(args, val)
-		}
-		result += strings.Join(args, ", ")
-	}
-	result += "}\n"
-
-	return result, state
-}
-
 func (e ExternRecordType) Compile(state State) (string, State) {
 	str := ""
 	path := GetImportPath(e.Import)
@@ -584,6 +546,48 @@ func (c VariantConstructor) Compile(state State) (string, State) {
 	str := ""
 
 	return str, state
+}
+
+func (a VariantInstance) Compile(state State) (string, State) {
+	result := ""
+	result += a.Name + "{"
+	result += fmt.Sprintf("%d", a.Constructor)
+
+	if len(a.Arguments) > 0 {
+		args := make([]string, 0)
+		for _, el := range a.Arguments {
+			value, s := el.Compile(state)
+			state = s
+			args = append(args, value)
+		}
+		result += ", []interface{}{"
+		result += strings.Join(args, ", ") + "}"
+	} else {
+		result += ", nil"
+	}
+	result += "}\n"
+
+	return result, state
+}
+
+func (a RecordInstance) Compile(state State) (string, State) {
+	result := ""
+	result += a.Name + "{"
+	if len(a.Values) > 0 {
+		args := make([]string, 0)
+		for key, el := range a.Values {
+			val := ""
+			val += strings.Title(key) + ": "
+			value, s := el.Compile(state)
+			val += value
+			state = s
+			args = append(args, val)
+		}
+		result += strings.Join(args, ", ")
+	}
+	result += "}\n"
+
+	return result, state
 }
 
 func (f RecordField) Compile(state State) (string, State) {

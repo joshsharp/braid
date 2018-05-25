@@ -617,6 +617,10 @@ Arguments = '(' _ argument:BinOpParens _ rest:(',' _ BinOpParens)* _ ')' {
     args := []Ast{argument.(Ast)}
     return Container{Type: "Arguments", Subvalues: args}, nil
 }
+/
+'(' _ ')' {
+    return Container{Type: "Arguments"}, nil
+}
 
 CompoundExpr = _ op:BinOp rest:(__N Operator __N BinOp)* {
     //fmt.Println("compound", op, rest)
