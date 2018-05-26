@@ -23,6 +23,7 @@ test: grammar build
 .PHONY: test
 
 grammar:
-	../../bin/pigeon ast/braid.peg | goimports > ast/grammar.go
+	../../vendor/bin/pigeon ast/braid.peg | goimports > ast/grammar.go
+
 
 
