@@ -65,7 +65,7 @@ func (m Module) Compile(state State) (string, State) {
 	// having rearranged, we make our final string again
 	final := strings.Join(lines, "\n")
 	for _, t := range state.Module.ConcreteTypes {
-		fmt.Println("concrete compile of", t)
+		//fmt.Println("concrete compile of", t)
 		value, s := t.Compile(state)
 		final += value
 		state = s
@@ -127,7 +127,7 @@ func (i Identifier) Compile(state State) (string, State) {
 }
 
 func (a ArrayType) Compile(state State) (string, State) {
-	fmt.Println(a.Print(0))
+	//fmt.Println(a.Print(0))
 	values := fmt.Sprintf("[]%s{", a.InferredType.GetName())
 	for _, el := range a.Subvalues {
 		value, s := el.Compile(state)
