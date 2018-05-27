@@ -5,8 +5,12 @@ let add = (one, two) {
 	two ++ one
 }
 
-let main = {
-    let two = add("one","two")
+let things = {
+	["kittens", "popcorn", "a turnip"]
 }
 
-
+let main = {
+    let two = add("one","two")
+	let three = things()
+	let four = three[0]
+}

@@ -126,9 +126,9 @@ func (i Identifier) Compile(state State) (string, State) {
 	return i.StringValue, state
 }
 
-func (a ArrayType) Compile(state State) (string, State) {
+func (a Array) Compile(state State) (string, State) {
 	//fmt.Println(a.Print(0))
-	values := fmt.Sprintf("[]%s{", a.InferredType.GetName())
+	values := fmt.Sprintf("%s{", a.InferredType.GetName())
 	for _, el := range a.Subvalues {
 		value, s := el.Compile(state)
 		values += value + ","
@@ -157,6 +157,14 @@ func (c Container) Compile(state State) (string, State) {
 		}
 		return values, state
 	}
+}
+
+func (a ArrayType) Compile(state State) (string, State) {
+
+	value, s := a.Subtype.Compile(state)
+	state = s
+	return "[]" + value + "{}", state
+
 }
 
 func (e Expr) Compile(state State) (string, State) {

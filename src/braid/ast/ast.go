@@ -72,6 +72,11 @@ type Container struct {
 }
 
 type ArrayType struct {
+	Subtype      Ast
+	InferredType Type
+}
+
+type Array struct {
 	Subvalues    []Ast
 	InferredType Type
 }
@@ -285,6 +290,10 @@ func (v Variant) SetInferredType(t Type) {
 
 }
 
+func (a Array) SetInferredType(t Type) {
+	a.InferredType = t
+}
+
 func (a ArrayType) SetInferredType(t Type) {
 	a.InferredType = t
 }
@@ -355,6 +364,10 @@ func (v Variant) GetInferredType() Type {
 
 func (v VariantInstance) GetInferredType() Type {
 	return v.InferredType
+}
+
+func (a Array) GetInferredType() Type {
+	return a.InferredType
 }
 
 func (a ArrayType) GetInferredType() Type {
@@ -449,13 +462,17 @@ func (v VariantConstructor) String() string {
 	return v.Name
 }
 
-func (a ArrayType) String() string {
+func (a Array) String() string {
 	values := []string{}
 
 	for _, el := range a.Subvalues {
 		values = append(values, fmt.Sprint(el))
 	}
 	return "[" + strings.Join(values, ", ") + "]"
+}
+
+func (a ArrayType) String() string {
+	return "[]" + fmt.Sprint(a.Subtype) + "{}"
 }
 
 func (a RecordAccess) String() string {
@@ -519,7 +536,7 @@ func (c Expr) Print(indent int) string {
 	return str
 }
 
-func (a ArrayType) Print(indent int) string {
+func (a Array) Print(indent int) string {
 	str := ""
 
 	for i := 0; i < indent; i++ {
@@ -529,6 +546,18 @@ func (a ArrayType) Print(indent int) string {
 	for _, el := range a.Subvalues {
 		str += el.Print(indent + 1)
 	}
+	return str
+}
+
+func (a ArrayType) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += fmt.Sprintf("ArrayType: %s\n", a.InferredType)
+	str += a.Subtype.Print(indent + 1)
+
 	return str
 }
 

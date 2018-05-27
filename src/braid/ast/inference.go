@@ -56,6 +56,11 @@ type Function struct {
 	Env      State
 }
 
+type List struct {
+	Name  string
+	Types []Type
+}
+
 type Record struct {
 	Name   string
 	Params []string
@@ -94,6 +99,14 @@ func (r Record) GetName() string {
 
 func (r Record) GetType() string {
 	return r.Name
+}
+
+func (l List) GetName() string {
+	return l.Name
+}
+
+func (l List) GetType() string {
+	return l.Name
 }
 
 func (v VariantType) GetName() string {
@@ -421,6 +434,10 @@ func (node Container) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	return node, nil
 }
 
+func (node ArrayType) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	return node, nil
+}
+
 func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 
 	node.TempVar = NewTempVariable()
@@ -576,7 +593,7 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 
 }
 
-func (node ArrayType) Infer(env *State, nonGeneric []Type) (Ast, error) {
+func (node Array) Infer(env *State, nonGeneric []Type) (Ast, error) {
 
 	var lastType Type
 	var newValues []Ast
@@ -606,7 +623,7 @@ func (node ArrayType) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		}
 	}
 	node.Subvalues = newValues
-	node.InferredType = lastType
+	node.InferredType = List{Name: fmt.Sprintf("[]%s", lastType.GetName()), Types: []Type{lastType}}
 	//fmt.Println("Array type is", lastType.GetName())
 	return node, nil
 
@@ -1101,6 +1118,17 @@ func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 
 			return Function{Name: NewTempVariable(), Types: types}, nil
 		}
+	case ArrayType:
+		c := name.(ArrayType)
+		var types []Type
+
+		t, err := GetTypeFromAnnotation(c.Subtype, env)
+		if err != nil {
+			return nil, err
+		}
+		types = append(types, t)
+
+		return List{Name: fmt.Sprintf("[]%s", t.GetName()), Types: types}, nil
 	}
 
 	return nil, InferenceError{fmt.Sprintf("Do not know annotated type '%s'", name)}
@@ -1215,8 +1243,6 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			return nil
 		}
 	}
-
-	// TODO: unify record types
 
 	return InferenceError{fmt.Sprintf("No match for these types, not unified:\n%s\n\n%s", a, b)}
 }

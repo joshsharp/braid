@@ -16,6 +16,7 @@ let main = {
 	let c = a + b
 	let d = [5, 6]
 	let e = b
+	let f = ["things", "stuff"]
 	let _ = add(4, 5)
 	let pizza = cheesy("pizza", "bread")
 	//Mod.f()

@@ -401,7 +401,7 @@ ArgDefn = name:Identifier _ anno:(':' _ TypeAnnotation )? _ {
     return arg, nil
 }
 
-TypeAnnotation = AnyType / 
+TypeAnnotation = ArrayType / AnyType / 
 "func" _N args:ArgsDefn _ "->" _ ret:TypeAnnotation {
     // TODO: return correct func type annotation
     vals := args.(Container)
@@ -637,7 +637,7 @@ ArrayLiteral = '[' _ first:Expr _ rest:(',' _ Expr _)* ','? _ ']' {
             subvalues = append(subvalues, v)
         }
     }
-    return ArrayType{Subvalues: subvalues}, nil
+    return Array{Subvalues: subvalues}, nil
 }
 
 VariantInstance = name:ModuleName _ args:Arguments {
@@ -729,6 +729,10 @@ Unused = ('_') {
 }
 
 Reserved = ("let" / "if" / "else" / "extern" / "type" / "true" / "false" / "mutable" / "type" / BaseType) ![a-z]+
+
+ArrayType = '[' t:TypeAnnotation ']' {
+    return ArrayType{Subtype: t.(Ast)}, nil
+}
 
 BaseType = ( "int64" / "bool" / "string" / "byte" / "rune" / "float64" / "()" ) {
     return  BasicAst{Type:"Type", StringValue:string(c.text), ValueType:STRING}, nil
