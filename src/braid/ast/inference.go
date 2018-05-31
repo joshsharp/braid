@@ -361,7 +361,7 @@ func (node Call) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		t := el.GetInferredType()
 
 		// now unify matching func arg type
-		err = Unify(&t, &fArg, env)
+		err = Unify(t, fArg, env)
 		if err != nil {
 			return nil, err
 		}
@@ -410,7 +410,7 @@ func (node BinOp) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	node.Operator = op
 	lType := left.GetInferredType()
 	rType := right.GetInferredType()
-	err = Unify(&lType, &rType, env)
+	err = Unify(lType, rType, env)
 	if err != nil {
 		return nil, err
 	}
@@ -422,8 +422,8 @@ func (node BinOp) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		// that they've been unified
 	} else {
 		node.InferredType = op.GetInferredType()
-		Unify(&lType, &node.InferredType, env)
-		Unify(&rType, &node.InferredType, env)
+		Unify(lType, node.InferredType, env)
+		Unify(rType, node.InferredType, env)
 	}
 
 	return node, nil
@@ -435,6 +435,38 @@ func (node Container) Infer(env *State, nonGeneric []Type) (Ast, error) {
 }
 
 func (node ArrayType) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	return node, nil
+}
+
+func (node ArrayAccess) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	// look up type of identifier, should be array
+	t, err := GetType(node.Identifier.StringValue, *env, nonGeneric)
+	if err != nil {
+		return nil, err
+	}
+
+	switch t.(type) {
+	case List:
+		//pass
+	default:
+		return nil, InferenceError{"Cannot access the index of a non-array value"}
+	}
+
+	// get subtype - this is our type
+	node.InferredType = t.(List).Types[0]
+
+	// make sure index is an int
+	index, err := node.Index.Infer(env, nonGeneric)
+	if err != nil {
+		return nil, err
+	}
+	node.Index = index
+	indexType := index.GetInferredType()
+
+	err = Unify(indexType, Integer, env)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
@@ -579,7 +611,7 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	node.Else = newStatements
 
 	if elseType != nil {
-		err = Unify(&thenType, &elseType, env)
+		err = Unify(thenType, elseType, env)
 		if err != nil {
 			return nil, err
 		}
@@ -607,7 +639,7 @@ func (node Array) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		}
 		if lastType != nil {
 
-			err := Unify(&tType, &lastType, env)
+			err := Unify(tType, lastType, env)
 			if err != nil {
 				return nil, err
 			}
@@ -644,7 +676,7 @@ func (node Expr) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		tType := t.GetInferredType()
 		if lastType != nil {
 
-			err := Unify(&tType, &lastType, env)
+			err := Unify(tType, lastType, env)
 			if err != nil {
 				return nil, err
 			}
@@ -686,7 +718,7 @@ func (node Func) Infer(env *State, nonGeneric []Type) (Ast, error) {
 						el.(Identifier).Annotation)}
 				}
 
-				Unify(&t, &newType, &newEnv)
+				Unify(t, newType, &newEnv)
 				newEnv.Env[el.(Identifier).StringValue] = t
 			}
 		}
@@ -973,7 +1005,7 @@ func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		argType := arg.GetInferredType()
 
 		//fmt.Println(node.Name, "arg type is", argType)
-		err = Unify(&argType, &t, env)
+		err = Unify(argType, t, env)
 		if err != nil {
 			return nil, InferenceError{fmt.Sprintf("Argument %d to %s doesn't match type %s", i+1, node.Name, t.GetName())}
 		}
@@ -1141,7 +1173,7 @@ func GetType(name string, env State, nonGeneric []Type) (Type, error) {
 	return nil, InferenceError{"Undefined type " + name}
 }
 
-func Unify(t1 *Type, t2 *Type, env *State) error {
+func Unify(t1 Type, t2 Type, env *State) error {
 	/* Unify the two types t1 and t2.
 
 	Makes the types t1 and t2 the same.
@@ -1153,8 +1185,8 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 	Returns:
 		An error if the types cannot be unified.
 	*/
-	a := Prune(*t1)
-	b := Prune(*t2)
+	a := Prune(t1)
+	b := Prune(t2)
 
 	//fmt.Println("Unify", *t1, *t2)
 
@@ -1182,13 +1214,13 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 	case TypeOperator:
 		switch b.(type) {
 		case TypeVariable:
-			return Unify(&b, &a, env)
+			return Unify(b, a, env)
 		case TypeOperator:
 			aTypeLen := len(a.(TypeOperator).Types)
 			bTypeLen := len(b.(TypeOperator).Types)
 			if a.GetName() != b.GetName() || aTypeLen != bTypeLen {
 				if len(b.(TypeOperator).Types) > 0 {
-					return Unify(&b, &a, env)
+					return Unify(b, a, env)
 				} else if aTypeLen > 0 {
 					if a.(TypeOperator).Types[aTypeLen-1].GetName() ==
 						b.(TypeOperator).GetName() {
@@ -1199,7 +1231,7 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			}
 			// we know that the types must match because they didn't pass into that last condition
 			for i, el := range a.(TypeOperator).Types {
-				err := Unify(&el, &b.(TypeOperator).Types[i], env)
+				err := Unify(el, b.(TypeOperator).Types[i], env)
 				if err != nil {
 					return err
 				}
@@ -1216,7 +1248,7 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 			}
 			// we know that the types must match because they didn't pass into that last condition
 			for i, el := range a.(Function).Types {
-				err := Unify(&el, &b.(Function).Types[i], env)
+				err := Unify(el, b.(Function).Types[i], env)
 				if err != nil {
 					return err
 				}
@@ -1234,7 +1266,7 @@ func Unify(t1 *Type, t2 *Type, env *State) error {
 
 			for i, el := range a.(Record).Fields {
 				field := b.(Record).Fields[i]
-				err := Unify(&el, &field, env)
+				err := Unify(el, field, env)
 				if err != nil {
 					return err
 				}

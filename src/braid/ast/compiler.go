@@ -201,6 +201,17 @@ func (a RecordAccess) Compile(state State) (string, State) {
 	return val, state
 }
 
+func (a ArrayAccess) Compile(state State) (string, State) {
+	str := ""
+	value, s := a.Identifier.Compile(state)
+	state = s
+	str += value + "["
+	value, s = a.Index.Compile(state)
+	state = s
+	str += value + "]"
+	return str, state
+}
+
 func (a Assignment) Compile(state State) (string, State) {
 	result := ""
 

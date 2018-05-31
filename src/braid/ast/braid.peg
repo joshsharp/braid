@@ -362,6 +362,10 @@ RecordAccess = record:VariableName rest:('.' VariableName)+ {
     return RecordAccess{Identifiers: args}, nil
 }
 
+ArrayAccess = array:VariableName '[' e:Expr ']' {
+    return ArrayAccess{Identifier: array.(Identifier), Index: e.(Expr)}, nil
+}
+
 ArgsDefn = '(' _ argument:ArgDefn _ rest:(',' _ ArgDefn)* _ ')' {
 
     args := []Ast{argument.(Ast)}
@@ -618,7 +622,7 @@ OperatorLow = ( "+" / "-" ) {
     return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
 }
 
-Value = Call / RecordAccess / VariableName / Const
+Value = Call / RecordAccess / ArrayAccess / VariableName / Const
 
 Assignable = VariableName / Unused
 

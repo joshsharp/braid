@@ -101,6 +101,12 @@ type RecordAccess struct {
 	InferredType Type
 }
 
+type ArrayAccess struct {
+	Identifier   Identifier
+	Index        Ast
+	InferredType Type
+}
+
 type VariantInstance struct {
 	Name         string
 	Constructor  int
@@ -206,6 +212,10 @@ func (v VariantConstructor) GetInferredType() Type {
 }
 
 func (a RecordAccess) GetInferredType() Type {
+	return a.InferredType
+}
+
+func (a ArrayAccess) GetInferredType() Type {
 	return a.InferredType
 }
 
@@ -483,6 +493,11 @@ func (a RecordAccess) String() string {
 	return strings.Join(bits, ".")
 }
 
+func (a ArrayAccess) String() string {
+
+	return a.Identifier.String() + "[]"
+}
+
 func (a RecordAccess) Print(indent int) string {
 	str := ""
 
@@ -557,6 +572,18 @@ func (a ArrayType) Print(indent int) string {
 	}
 	str += fmt.Sprintf("ArrayType: %s\n", a.InferredType)
 	str += a.Subtype.Print(indent + 1)
+
+	return str
+}
+
+func (a ArrayAccess) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += fmt.Sprintf("ArrayAccess: %s\n", a.InferredType)
+	str += a.Index.Print(indent + 1)
 
 	return str
 }
