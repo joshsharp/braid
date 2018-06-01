@@ -10,9 +10,9 @@ let cheesy = (item, item2) {
 
 let main = {
 	// one
-	let a = 2
+	let a = 2.0
 	// two
-	let b = 3 + -2
+	let b = 3.0 +. -2.0
 	let c = a + b
 	let d = [5, 6]
 	let e = b

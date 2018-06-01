@@ -608,8 +608,11 @@ OperatorEquality = ( ">=" / "<=" / '<' / '>' / "===" / "=="){
     return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 
-OperatorHigh = ( "/" / "*" ) {
-    return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
+OperatorHigh = ( "/." / "*." ) {
+    return Operator{StringValue:string(c.text), ValueType:FLOAT}, nil
+}
+/ ( "/" / "*" ) {
+    return Operator{StringValue:string(c.text), ValueType:INT}, nil
 }
 / ( '^' ) {
     return Operator{StringValue:string(c.text), ValueType:INT}, nil
@@ -618,8 +621,11 @@ OperatorHigh = ( "/" / "*" ) {
     return Operator{StringValue:string(c.text), ValueType:STRING}, nil
 }
 
-OperatorLow = ( "+" / "-" ) {
-    return Operator{StringValue:string(c.text), ValueType:NUMBER}, nil
+OperatorLow = ( "+." / "-." ) {
+    return Operator{StringValue:string(c.text), ValueType:FLOAT}, nil
+} 
+/ ( "+" / "-" ) {
+    return Operator{StringValue:string(c.text), ValueType:INT}, nil
 }
 
 Value = Call / RecordAccess / ArrayAccess / VariableName / Const
@@ -689,20 +695,20 @@ ModuleName = ([A-Z]+ [a-zA-Z0-9_]*) {
     return Identifier{StringValue:string(c.text)}, nil
 }
 
-Const = '-'? [0-9]+ !'.' {
-    val, err := strconv.Atoi(string(c.text))
-    if err != nil {
-        return nil, err
-    }
-    return BasicAst{Type:"Integer", IntValue:val, ValueType:INT}, nil
-}
-/ '-'? [0-9]+ '.' [0-9]+ {
+Const = '-'? [0-9]+ '.' [0-9]+ {
     val, err := strconv.ParseFloat(string(c.text),64)
     if err != nil {
         return nil, err
     }
     return BasicAst{Type:"Float", FloatValue:val, ValueType:FLOAT}, nil
 }
+/ '-'? [0-9]+ !'.' {
+    val, err := strconv.Atoi(string(c.text))
+    if err != nil {
+        return nil, err
+    }
+    return BasicAst{Type:"Integer", IntValue:val, ValueType:INT}, nil
+} 
 / "true" {
     return BasicAst{Type:"Bool", BoolValue: true, ValueType:BOOL}, nil
 
