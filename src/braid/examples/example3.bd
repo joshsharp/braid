@@ -10,7 +10,7 @@ let things = {
 }
 
 let index = {
-	5
+	0 + 1
 }
 
 let main = {

@@ -464,9 +464,11 @@ func (node ArrayAccess) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	indexType := index.GetInferredType()
 
 	err = Unify(indexType, Integer, env)
+
 	if err != nil {
 		return nil, err
 	}
+	(*env).UsedVariables[node.Identifier.StringValue] = true
 	return node, nil
 }
 
