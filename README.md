@@ -36,6 +36,8 @@ Consider anything ticked off to exist in the language, but be barely usable.
 - [ ] Pattern matching
 - [ ] Currying
 - [ ] Typeclasses/traits
+- [ ] Concurrency
+- [ ] Infix operators
 
 Braid supports records and variants:
 
