@@ -1,6 +1,6 @@
 module Main
 
-extern func println = "fmt.Println" (s: string) -> ()
+extern func println = "fmt.Println" (s: 'any) -> ()
 
 type StringResult = 
 	| OkS string string

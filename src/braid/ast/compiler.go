@@ -13,11 +13,16 @@ func GetImportPath(imprt string) string {
 
 // Removes the import path so we are left with only the imported type.
 func GetTypeFromImport(imprt string) string {
+
+	if !strings.Contains(imprt, ".") {
+		return imprt
+	}
+
 	pathParts := strings.Split(imprt, ".")
 	if len(pathParts) > 1 {
 		return pathParts[len(pathParts)-1]
 	} else {
-		panic("Cannot parse this import string")
+		panic(fmt.Sprintf("Cannot parse this import string: %s", imprt))
 	}
 }
 
@@ -223,14 +228,34 @@ func (a Assignment) Compile(state State) (string, State) {
 
 	var varName string
 
-	if _, ok := state.UsedVariables[a.Left.(Identifier).StringValue]; !ok {
-		// if this identifier is in not here, means it's unused
-		// so return '_'
-		varName = "_"
-	} else {
-		value, s := a.Left.Compile(state)
-		state = s
-		varName = value
+	switch a.Left.(type) {
+	case Container:
+		var names []string
+		for _, el := range a.Left.(Container).Subvalues {
+			if _, ok := state.UsedVariables[el.(Identifier).StringValue]; !ok {
+				// if this identifier is in not here, means it's unused
+				// so return '_'
+				names = append(names, "_")
+			} else {
+				value, s := el.Compile(state)
+				state = s
+				names = append(names, value)
+			}
+		}
+		varName = strings.Join(names, ", ")
+	case Identifier:
+		if _, ok := state.UsedVariables[a.Left.(Identifier).StringValue]; !ok {
+			// if this identifier is in not here, means it's unused
+			// so return '_'
+			varName = "_"
+		} else {
+			value, s := a.Left.Compile(state)
+			state = s
+			varName = value
+		}
+
+	default:
+		panic("Don't know how to compile " + a.Left.String())
 	}
 
 	switch a.Right.(type) {
@@ -273,6 +298,22 @@ func (r Return) Compile(state State) (string, State) {
 	}
 	result += value
 	state = s
+
+	return result, state
+
+}
+
+func (r ReturnTuple) Compile(state State) (string, State) {
+	result := "("
+	var vals []string
+	for _, el := range r.Subvalues {
+		// compile each sub AST
+		// make a result then indent each line
+		value, s := el.Compile(state)
+		state = s
+		vals = append(vals, value)
+	}
+	result += strings.Join(vals, ", ") + ")"
 
 	return result, state
 
@@ -371,11 +412,14 @@ func (e ExternRecordType) Compile(state State) (string, State) {
 	path := GetImportPath(e.Import)
 	name := "__go_" + StripImportPath(path)
 
+	if path == GetTypeFromImport(e.Import) {
+		return str, state
+	}
+	// only import type from package if it's not builtin
 	if _, ok := state.Module.Imports[name]; !ok {
 		state.Module.Imports[name] = true
 		str += fmt.Sprintf("import %s \"%s\"\n", name, path)
 	}
-
 	pointer := ""
 	if strings.Index(e.Import, "*") == 0 {
 		pointer = "*"

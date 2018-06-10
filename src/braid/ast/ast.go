@@ -71,6 +71,11 @@ type Container struct {
 	InferredType Type
 }
 
+type ReturnTuple struct {
+	Subvalues    []Ast
+	InferredType Type
+}
+
 type ArrayType struct {
 	Subtype      Ast
 	InferredType Type
@@ -360,6 +365,10 @@ func (r Return) GetInferredType() Type {
 	return r.InferredType
 }
 
+func (r ReturnTuple) GetInferredType() Type {
+	return r.InferredType
+}
+
 func (r RecordType) GetInferredType() Type {
 	return r.InferredType
 }
@@ -472,6 +481,16 @@ func (v VariantConstructor) String() string {
 	return v.Name
 }
 
+func (t ReturnTuple) String() string {
+	bits := make([]string, 2)
+
+	for _, el := range t.Subvalues {
+		bits = append(bits, el.String())
+	}
+
+	return fmt.Sprintf("(%s)", strings.Join(bits, ","))
+}
+
 func (a Array) String() string {
 	values := []string{}
 
@@ -535,6 +554,21 @@ func (c Container) Print(indent int) string {
 	for _, el := range c.Subvalues {
 		str += el.Print(indent + 1)
 	}
+	return str
+}
+
+func (t ReturnTuple) Print(indent int) string {
+	str := ""
+
+	for i := 0; i < indent; i++ {
+		str += "  "
+	}
+	str += "Tuple:\n"
+
+	for _, el := range t.Subvalues {
+		str += el.Print(indent + 1)
+	}
+
 	return str
 }
 

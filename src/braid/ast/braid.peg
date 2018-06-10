@@ -44,10 +44,10 @@ ExprLine = e:Expr N {
 }
 
 ExternFunc = _ "extern" __N "func" __N name:Identifier _N '=' _N importName:StringLiteral _N args:ArgsDefn
-    _N "->" _N ret:TypeAnnotation {
+    _N "->" _N ret:ReturnTypeAnnotation {
 
     return ExternFunc{Name: name.(Identifier).StringValue, Import: importName.(BasicAst).StringValue,
-        Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(BasicAst) }, nil
+        Arguments: args.(Container).Subvalues, ReturnAnnotation: ret.(Ast) }, nil
 }
 
 ExternType = _ "extern" __N "type" __ name:ModuleName _ '=' _
@@ -383,6 +383,10 @@ ArgsDefn = '(' _ argument:ArgDefn _ rest:(',' _ ArgDefn)* _ ')' {
 
     return Container{Type: "Arguments", Subvalues: args}, nil
 }
+/
+'(' _ ')' {
+    return Container{Type: "Arguments"}, nil
+}
 
 ArgDefn = name:Identifier _ anno:(':' _ TypeAnnotation )? _ {
     //fmt.Println("parsing arg:", string(c.text))
@@ -404,6 +408,26 @@ ArgDefn = name:Identifier _ anno:(':' _ TypeAnnotation )? _ {
     //fmt.Println("parsed:", arg)
     return arg, nil
 }
+
+ReturnTypeAnnotation = TypeAnnotation / 
+'(' _ t:TypeAnnotation _ rest:(',' _ TypeAnnotation)* _ ')' {
+
+    args := []Ast{t.(Ast)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(Ast)
+            args = append(args, v)
+        }
+    }
+
+    return ReturnTuple{Subvalues: args}, nil
+}
+
 
 TypeAnnotation = ArrayType / AnyType / 
 "func" _N args:ArgsDefn _ "->" _ ret:TypeAnnotation {
@@ -630,7 +654,24 @@ OperatorLow = ( "+." / "-." ) {
 
 Value = Call / RecordAccess / ArrayAccess / VariableName / Const
 
-Assignable = VariableName / Unused
+Assignable = first:SubAssignable _ rest:(',' _ SubAssignable _)+ {
+    args := []Ast{first.(Ast)}
+
+    vals := rest.([]interface{})
+    if len(vals) > 0 {
+        restSl := toIfaceSlice(rest)
+        for _, v := range restSl {
+            // we can get each item in the grammar by index
+            restExpr := toIfaceSlice(v)
+            v := restExpr[2].(Ast)
+            args = append(args, v)
+        }
+    }
+    return Container{Type:"Assignable", Subvalues:args}, nil
+}
+/ VariableName / Unused
+
+SubAssignable = VariableName / Unused
 
 Identifier = VariableName / ModuleName
 

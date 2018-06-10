@@ -17,6 +17,7 @@ var (
 	Rune               = TypeOperator{"rune", []Type{}}
 	Unit               = TypeOperator{"()", []Type{}}
 	MainReturnType     = TypeOperator{" ", []Type{}}
+	Any                = TypeOperator{"Any", []Type{}}
 )
 
 type Type interface {
@@ -126,7 +127,7 @@ func (v VariantConstructorType) GetType() string {
 }
 
 func (f Function) String() string {
-	str := f.Name + ":\n"
+	str := "func " + f.Name + ":\n"
 	for _, el := range f.Types {
 		str += fmt.Sprintf("\t%s\n", el)
 	}
@@ -280,30 +281,60 @@ func (node Assignment) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		return nil, err
 	}
 
-	///fmt.Println("right side type:", rightSide.GetInferredType())
-	if node.Left.(Identifier).StringValue != "_" {
-		name := node.Left.(Identifier).StringValue
+	switch node.Left.(type) {
+	case Identifier:
+		//fmt.Println("right side type:", rightSide.GetInferredType())
+		if node.Left.(Identifier).StringValue != "_" {
+			name := node.Left.(Identifier).StringValue
 
-		if _, ok := (*env).Env[name]; ok {
-			return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
+			if _, ok := (*env).Env[name]; ok {
+				return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
+			}
+
+			(*env).Env[name] = rightSide.GetInferredType()
+
 		}
 
-		(*env).Env[name] = rightSide.GetInferredType()
+		left := Identifier{StringValue: node.Left.(Identifier).StringValue,
+			InferredType: rightSide.GetInferredType()}
+
+		// check in case this is a typevar already stored
+		if t, ok := (*env).Env[rightSide.GetInferredType().GetName()]; ok {
+			(*env).Env[left.StringValue] = t
+			left.InferredType = t
+		}
+
+		node.Right = rightSide
+		node.Left = left
+		node.InferredType = left.GetInferredType()
+	case Container:
+		left := node.Left.(Container)
+		// multiple assignables
+		switch rightSide.GetInferredType().(type) {
+		case List:
+
+			if len(left.Subvalues) != len(rightSide.GetInferredType().(List).Types) {
+				return nil, InferenceError{"Number of identifiers on left side does not much number of return arguments"}
+			}
+
+			for i, el := range left.Subvalues {
+				name := el.(Identifier).StringValue
+
+				if _, ok := (*env).Env[name]; ok {
+					return nil, InferenceError{"Cannot assign to " + name + ", it is already declared"}
+				}
+
+				(*env).Env[name] = rightSide.GetInferredType().(List).Types[i]
+			}
+		default:
+			return nil, InferenceError{"Cannot unpack multiple values for " + right.String()}
+		}
+
+		node.Right = rightSide
+		node.Left = left
+		node.InferredType = right.GetInferredType()
 
 	}
-
-	left := Identifier{StringValue: node.Left.(Identifier).StringValue,
-		InferredType: rightSide.GetInferredType()}
-
-	// check in case this is a typevar already stored
-	if t, ok := (*env).Env[rightSide.GetInferredType().GetName()]; ok {
-		(*env).Env[left.StringValue] = t
-		left.InferredType = t
-	}
-
-	node.Right = rightSide
-	node.Left = left
-	node.InferredType = left.GetInferredType()
 
 	return node, nil
 
@@ -1078,6 +1109,11 @@ func (node Return) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	return node, nil
 }
 
+func (node ReturnTuple) Infer(env *State, nonGeneric []Type) (Ast, error) {
+	// added by inference passes, should not need checking
+	return node, nil
+}
+
 func (node ExternFunc) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	// make our function type
 	fType := Function{Name: node.Name, External: "__go_" + StripImportPath(node.Import), Types: []Type{}}
@@ -1116,6 +1152,7 @@ func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 	types["rune"] = Rune
 	types["bool"] = Boolean
 	types["()"] = Unit
+	types["'any"] = Any
 
 	switch name.(type) {
 	case BasicAst:
@@ -1140,7 +1177,8 @@ func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 		// containers are a list of types for a func (last one is return type)
 		// we need to make sure each type in here matches too
 		c := name.(Container)
-		if c.Type == "FuncAnnotation" {
+		switch c.Type {
+		case "FuncAnnotation":
 			var types []Type
 			for _, el := range c.Subvalues {
 				t, err := GetTypeFromAnnotation(el, env)
@@ -1152,6 +1190,22 @@ func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 
 			return Function{Name: NewTempVariable(), Types: types}, nil
 		}
+	case ReturnTuple:
+		tuple := name.(ReturnTuple)
+		var names []string
+
+		var types []Type
+
+		for _, el := range tuple.Subvalues {
+			t, err := GetTypeFromAnnotation(el, env)
+			if err != nil {
+				return nil, err
+			}
+			types = append(types, t)
+			names = append(names, t.GetName())
+		}
+
+		return List{Name: fmt.Sprintf("(%s)", strings.Join(names, ",")), Types: types}, nil
 	case ArrayType:
 		c := name.(ArrayType)
 		var types []Type
@@ -1189,6 +1243,11 @@ func Unify(t1 Type, t2 Type, env *State) error {
 	*/
 	a := Prune(t1)
 	b := Prune(t2)
+
+	if a.GetName() == Any.GetName() || b.GetName() == Any.GetName() {
+		// Any unifies with everything
+		return nil
+	}
 
 	//fmt.Println("Unify", *t1, *t2)
 
@@ -1278,7 +1337,7 @@ func Unify(t1 Type, t2 Type, env *State) error {
 		}
 	}
 
-	return InferenceError{fmt.Sprintf("No match for these types, not unified:\n%s\n\n%s", a, b)}
+	return InferenceError{fmt.Sprintf("No match for these types, not unified:\n* %s\n* %s", a.GetName(), b.GetName())}
 }
 
 func Prune(t Type) Type {
