@@ -1,0 +1,39 @@
+module Main
+
+extern type ResponseWriter = "net/http.ResponseWriter"
+extern type Request = "*net/http.Request" {
+    method: string
+}
+
+extern type Error = "Error" {
+    error: func() -> string,
+}
+
+type User = {
+    firstName: string,
+    lastName:  string,
+}
+
+extern func fprintf = "fmt.Fprintf" (writer: ResponseWriter, str: string) -> ()
+extern func fprintf1 = "fmt.Fprintf" (writer: ResponseWriter, str: string, arg: 'any) -> ()
+extern func toString = "string" (arg: 'any) -> string
+extern func marshalUser = "encoding/json.Marshal" (user: 'any) -> ([byte], Error)
+extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(ResponseWriter, Request)->()) -> ()
+extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
+
+
+let handleJSON = (w: ResponseWriter, request: Request) -> (){
+    let siri = User{firstName: "Siri", lastName: "Appleson"}
+    let result, err = marshalUser(siri)
+    fprintf(w, toString(result))
+}
+
+let handleIndex = (w: ResponseWriter, request: Request) -> (){
+    fprintf(w, "Hello world!\n")    
+}
+
+let main = {
+    handleFunc("/", handleIndex)
+    handleFunc("/json", handleJSON)
+    listenAndServe(":8000", ())
+}
