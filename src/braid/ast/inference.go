@@ -14,10 +14,11 @@ var (
 	Float              = TypeOperator{"float64", []Type{}}
 	Number             = TypeOperator{"number", []Type{Float, Integer}}
 	String             = TypeOperator{"string", []Type{}}
+	Byte               = TypeOperator{"byte", []Type{}}
 	Rune               = TypeOperator{"rune", []Type{}}
 	Unit               = TypeOperator{"()", []Type{}}
 	MainReturnType     = TypeOperator{" ", []Type{}}
-	Any                = TypeOperator{"Any", []Type{}}
+	Any                = TypeOperator{"interface{}", []Type{}}
 )
 
 type Type interface {
@@ -405,8 +406,15 @@ func (node Call) Infer(env *State, nonGeneric []Type) (Ast, error) {
 
 	// if external func, rewrite to original func name and module
 	if fType.(Function).External != "" {
-		node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[0]}
-		node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[1]}
+		if strings.Contains(fType.(Function).External, ".") {
+			node.Module = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[0]}
+			node.Function = Identifier{StringValue: strings.SplitN(fType.(Function).External, ".", 2)[1]}
+		} else {
+			node.Module = Identifier{StringValue: ""}
+			node.Function = Identifier{StringValue: fType.(Function).External}
+			fmt.Printf("Setting %s to %s directly\n", node.Function.StringValue, fType.(Function).External)
+		}
+
 	}
 	//fmt.Println((*env).UsedVariables)
 	return node, nil
@@ -1116,7 +1124,12 @@ func (node ReturnTuple) Infer(env *State, nonGeneric []Type) (Ast, error) {
 
 func (node ExternFunc) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	// make our function type
-	fType := Function{Name: node.Name, External: "__go_" + StripImportPath(node.Import), Types: []Type{}}
+	var fType Function
+	if HasImportPath(node.Import) {
+		fType = Function{Name: node.Name, External: "__go_" + StripImportPath(node.Import), Types: []Type{}}
+	} else {
+		fType = Function{Name: node.Name, External: node.Import, Types: []Type{}}
+	}
 
 	// grab inferred types of args
 	if len(node.Arguments) > 0 {
@@ -1150,6 +1163,7 @@ func GetTypeFromAnnotation(name Ast, env *State) (Type, error) {
 	types["float64"] = Float
 	types["string"] = String
 	types["rune"] = Rune
+	types["byte"] = Byte
 	types["bool"] = Boolean
 	types["()"] = Unit
 	types["'any"] = Any

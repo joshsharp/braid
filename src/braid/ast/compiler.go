@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+// Makes sure there is an import path.
+func HasImportPath(imprt string) bool {
+	return strings.Contains(imprt, ".")
+}
+
 // Removes the type and returns just the import path.
 func GetImportPath(imprt string) string {
 	pathParts := strings.Split(imprt, ".")
@@ -434,21 +439,27 @@ func (e ExternRecordType) Compile(state State) (string, State) {
 func (e ExternFunc) Compile(state State) (string, State) {
 	// TODO: handle nested packages
 
-	path := GetImportPath(e.Import)
-	name := "__go_" + StripImportPath(path)
+	if HasImportPath(e.Import) {
 
-	if _, ok := state.Module.Imports[name]; ok {
+		path := GetImportPath(e.Import)
+		name := "__go_" + StripImportPath(path)
+
+		if _, ok := state.Module.Imports[name]; ok {
+			return "", state
+		}
+
+		state.Module.Imports[name] = true
+
+		// TODO: handle tracking whether functions are actually called - not sure how to get root state
+		//if _, ok := state.UsedVariables[e.Name]; !ok {
+		//	return fmt.Sprintf("import _ \"%s\"\n", path[0]), state
+		//} else {
+		state.UsedVariables[e.Name] = true
+		return fmt.Sprintf("import %s \"%s\"\n", name, path), state
+	} else {
 		return "", state
 	}
 
-	state.Module.Imports[name] = true
-
-	// TODO: handle tracking whether functions are actually called - not sure how to get root state
-	//if _, ok := state.UsedVariables[e.Name]; !ok {
-	//	return fmt.Sprintf("import _ \"%s\"\n", path[0]), state
-	//} else {
-	state.UsedVariables[e.Name] = true
-	return fmt.Sprintf("import %s \"%s\"\n", name, path), state
 	//}
 }
 
