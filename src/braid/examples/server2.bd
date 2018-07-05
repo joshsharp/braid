@@ -21,6 +21,14 @@ extern func marshalUser = "encoding/json.Marshal" (user: 'any) -> ([byte], Error
 extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(ResponseWriter, Request)->()) -> ()
 extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
 
+let postOnly = (h: func(ResponseWriter, Request)->()) -> Handler {
+    let temp = (w: ResponseWriter, r: Request) -> () {
+        if r.method == "POST" {
+            h(w, r)
+        }
+    }
+    temp
+}
 
 let handleJSON = (w: ResponseWriter, request: Request) -> (){
     let siri = User{firstName: "Siri", lastName: "Appleson"}
@@ -34,6 +42,6 @@ let handleIndex = (w: ResponseWriter, request: Request) -> (){
 
 let main = {
     handleFunc("/", handleIndex)
-    handleFunc("/json", handleJSON)
+    handleFunc("/json", postOnly(handleJSON))
     listenAndServe(":8000", ())
 }

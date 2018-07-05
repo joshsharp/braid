@@ -296,6 +296,7 @@ func (a Assignment) Compile(state State) (string, State) {
 }
 
 func (r Return) Compile(state State) (string, State) {
+
 	result := "\nreturn "
 	value, s := r.Value.Compile(state)
 	if value == "nil\n" {
@@ -325,7 +326,10 @@ func (r ReturnTuple) Compile(state State) (string, State) {
 }
 
 func (a If) Compile(state State) (string, State) {
-	result := fmt.Sprintf("var %s %s\n", a.TempVar, a.InferredType.GetName())
+	result := ""
+	if a.InferredType.GetName() != Unit.GetName() {
+		result += fmt.Sprintf("var %s %s\n", a.TempVar, a.InferredType.GetName())
+	}
 	result += "\nif "
 
 	value, s := a.Condition.Compile(state)
@@ -496,7 +500,7 @@ func (a Func) Compile(state State) (string, State) {
 		args := make([]string, 0)
 		for i, el := range a.Arguments {
 			argName, s := el.Compile(state)
-			argType := types[i].GetName()
+			argType := types[i].GetType()
 			arg := fmt.Sprintf("%s %s", argName, argType)
 			args = append(args, arg)
 			state = s
@@ -506,7 +510,7 @@ func (a Func) Compile(state State) (string, State) {
 	}
 	result += ") "
 	if typesLen > 0 {
-		result += fmt.Sprintf("%s {\n", types[typesLen-1].GetName())
+		result += fmt.Sprintf("%s {\n", types[typesLen-1].GetType())
 	} else {
 		result += "{\n"
 	}

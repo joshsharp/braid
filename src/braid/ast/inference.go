@@ -159,14 +159,15 @@ func (t Function) GetName() string {
 }
 
 func (t Function) GetType() string {
-	name := "("
-	for i, el := range t.Types {
+	name := "func("
+	for i, el := range t.Types[:len(t.Types)-1] {
 		if i > 0 {
-			name += " -> "
+			name += ", "
 		}
-		name += el.GetName()
+		name += el.GetType()
 	}
-	name += ")"
+	name += ") "
+	name += t.Types[len(t.Types)-1].GetType()
 	return name
 }
 
@@ -397,6 +398,7 @@ func (node Call) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		if err != nil {
 			return nil, err
 		}
+		node.Arguments[i] = el
 
 	}
 
@@ -545,10 +547,14 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			} else {
 
 				if i == len(statements)-1 {
-					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-						Right: t, Update: true}
+					if thenType.GetName() != Unit.GetName() {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					} else {
+						newStatements = append(newStatements, t)
+					}
 
-					newStatements = append(newStatements, assign)
 				} else {
 					newStatements = append(newStatements, t)
 				}
@@ -580,10 +586,12 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			} else {
 				newStatements = append(newStatements, t)
 				if i == len(statements)-1 {
-					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-						Right: t, Update: true}
+					if thenType.GetName() != Unit.GetName() {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
 
-					newStatements = append(newStatements, assign)
+						newStatements = append(newStatements, assign)
+					}
 				}
 				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
 			}
@@ -607,9 +615,13 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			} else {
 
 				if i == len(statements)-1 {
-					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-						Right: t, Update: true}
-					newStatements = append(newStatements, assign)
+					if thenType.GetName() != Unit.GetName() {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					} else {
+						newStatements = append(newStatements, t)
+					}
 				} else {
 					newStatements = append(newStatements, t)
 				}
@@ -640,9 +652,11 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			} else {
 				newStatements = append(newStatements, t)
 				if i == len(statements)-1 {
-					assign := Assignment{Left: Identifier{StringValue: node.TempVar},
-						Right: t, Update: true}
-					newStatements = append(newStatements, assign)
+					if thenType.GetName() != Unit.GetName() {
+						assign := Assignment{Left: Identifier{StringValue: node.TempVar},
+							Right: t, Update: true}
+						newStatements = append(newStatements, assign)
+					}
 				}
 				//fmt.Printf("Infer Then: %s\n", thenType.GetName())
 			}
@@ -779,13 +793,17 @@ func (node Func) Infer(env *State, nonGeneric []Type) (Ast, error) {
 				return nil, err
 			} else {
 				lastType = t.GetInferredType()
+
 				newStatements = append(newStatements, t)
 				// if last, replace with its equivalent return
 				if i == len(statements)-1 && node.Name != "main" {
-					returnAst := Return{Value: Identifier{StringValue: t.(If).TempVar}}
-					newEnv.UsedVariables[t.(If).TempVar] = true
-					newStatements = append(newStatements, returnAst)
+					if lastType.GetName() != Unit.GetName() {
+						returnAst := Return{Value: Identifier{StringValue: t.(If).TempVar}}
+						newEnv.UsedVariables[t.(If).TempVar] = true
+						newStatements = append(newStatements, returnAst)
+					}
 				}
+
 			}
 		case Expr:
 			t, err := s.Infer(&newEnv, nonGeneric)
