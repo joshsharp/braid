@@ -32,6 +32,7 @@ Consider anything ticked off to exist in the language, but be barely usable.
 - [X] Hindley-Milner type inference
 - [X] Type annotations
 - [X] Implicit return
+- [X] Multiple return
 - [ ] Modules
 - [ ] Pattern matching
 - [ ] Currying
@@ -56,7 +57,7 @@ type Option ('a) =
   | Some ('a)
   | None
   
-let result = Option("it worked")
+let result = Some("it worked")
 ```
 
 Braid attempts to support significant newlines, meaning no `;` required &mdash; however this is probably broken in a lot of cases right now.
