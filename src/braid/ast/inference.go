@@ -283,6 +283,10 @@ func (node Assignment) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		return nil, err
 	}
 
+	if rightSide.GetInferredType().GetType() == Unit.GetType() {
+		return nil, InferenceError{"Cannot assign a value of nil"}
+	}
+
 	switch node.Left.(type) {
 	case Identifier:
 		//fmt.Println("right side type:", rightSide.GetInferredType())
@@ -756,6 +760,7 @@ func (node Func) Infer(env *State, nonGeneric []Type) (Ast, error) {
 	statements := node.Subvalues
 	var newStatements []Ast
 	var lastType Type
+	var returnAnnotationType Type
 	var newEnv = State{Env: make(map[string]Type), UsedVariables: make(map[string]bool)}
 	CopyState(*env, newEnv)
 
@@ -777,6 +782,16 @@ func (node Func) Infer(env *State, nonGeneric []Type) (Ast, error) {
 				newEnv.Env[el.(Identifier).StringValue] = t
 			}
 		}
+	}
+
+	if node.ReturnAnnotation != nil {
+		t, err := GetTypeFromAnnotation(node.ReturnAnnotation, env)
+		if err != nil {
+			return nil, InferenceError{fmt.Sprintf("Cannot understand type annotation %s: %s",
+				node.ReturnAnnotation.(Identifier).StringValue,
+				node.ReturnAnnotation.(Identifier).Annotation)}
+		}
+		returnAnnotationType = t
 	}
 
 	if _, ok := (*env).Env[node.Name]; ok {
@@ -871,6 +886,14 @@ func (node Func) Infer(env *State, nonGeneric []Type) (Ast, error) {
 					newStatements = append(newStatements, returnAst)
 				}
 			}
+		}
+	}
+
+	if returnAnnotationType != nil {
+		err := Unify(returnAnnotationType, lastType, &newEnv)
+		if err != nil {
+			return nil, InferenceError{fmt.Sprintf("Type annotation does not match return type: %s != %s",
+				node.ReturnAnnotation.String(), lastType.GetName())}
 		}
 	}
 
