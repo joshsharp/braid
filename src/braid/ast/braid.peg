@@ -628,7 +628,7 @@ OperatorBoolean = ( "or" / "and" ) {
     return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 
-OperatorEquality = ( ">=" / "<=" / '<' / '>' / "===" / "=="){
+OperatorEquality = ( ">=" / "<=" / '<' / '>' / "!=" / "=="){
     return Operator{StringValue:string(c.text), ValueType:BOOL}, nil
 }
 

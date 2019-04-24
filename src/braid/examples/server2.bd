@@ -9,6 +9,10 @@ extern type Error = "Error" {
     error: func() -> string,
 }
 
+type Result ('a, 'b) =
+| Ok 'a
+| Err 'b
+
 type User = {
     firstName: string,
     lastName:  string,
@@ -17,11 +21,11 @@ type User = {
 extern func fprintf = "fmt.Fprintf" (writer: ResponseWriter, str: string) -> ()
 extern func fprintf1 = "fmt.Fprintf" (writer: ResponseWriter, str: string, arg: 'any) -> ()
 extern func toString = "string" (arg: 'any) -> string
-extern func marshalUser = "encoding/json.Marshal" (user: 'any) -> ([byte], Error)
+extern func marshal = "encoding/json.Marshal" (obj: 'any) -> ([byte], Error)
 extern func handleFunc = "net/http.HandleFunc" (path: string, handler: func(ResponseWriter, Request)->()) -> ()
 extern func listenAndServe = "net/http.ListenAndServe" (address: string, handler: ()) -> ()
 
-let postOnly = (h: func(ResponseWriter, Request)->()) -> Handler {
+let postOnly = (h: func(ResponseWriter, Request)->()) {
     let temp = (w: ResponseWriter, r: Request) -> () {
         if r.method == "POST" {
             h(w, r)
@@ -30,9 +34,18 @@ let postOnly = (h: func(ResponseWriter, Request)->()) -> Handler {
     temp
 }
 
+let marshalUser = (user: User) {
+    let result, err = marshal(user)
+    if err != () {
+        Err(err)
+    } else {
+        Ok(result)
+    }
+}
+
 let handleJSON = (w: ResponseWriter, request: Request) -> (){
     let siri = User{firstName: "Siri", lastName: "Appleson"}
-    let result, err = marshalUser(siri)
+    let result = marshalUser(siri)
     fprintf(w, toString(result))
 }
 

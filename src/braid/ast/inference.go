@@ -64,9 +64,10 @@ type List struct {
 }
 
 type Record struct {
-	Name   string
-	Params []string
-	Fields map[string]Type
+	Name     string
+	External bool
+	Params   []string
+	Fields   map[string]Type
 }
 
 type VariantInstanceType struct {
@@ -544,11 +545,11 @@ func (node If) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		switch s.(type) {
 		case BasicAst, Expr, BinOp:
 			t, err := s.Infer(env, nonGeneric)
-			thenType = t.GetInferredType()
 
 			if err != nil {
 				return nil, err
 			} else {
+				thenType = t.GetInferredType()
 
 				if i == len(statements)-1 {
 					if thenType.GetName() != Unit.GetName() {
@@ -985,7 +986,7 @@ func (node RecordType) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		fields[p.Name] = p.InferredType
 	}
 
-	env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
+	env.Env[node.Name] = Record{Name: node.Name, External: false, Params: params, Fields: fields}
 	return node, nil
 }
 
@@ -1101,6 +1102,7 @@ func (node VariantInstance) Infer(env *State, nonGeneric []Type) (Ast, error) {
 			break
 		}
 	}
+
 	node.InferredType = VariantInstanceType{Name: pName, Types: types}
 	// switch this to be a parent type
 	node.Name = pName
@@ -1123,7 +1125,7 @@ func (node ExternRecordType) Infer(env *State, nonGeneric []Type) (Ast, error) {
 		fields[p.Name] = p.InferredType
 	}
 
-	env.Env[node.Name] = Record{Name: node.Name, Params: params, Fields: fields}
+	env.Env[node.Name] = Record{Name: node.Name, External: true, Params: params, Fields: fields}
 	return node, nil
 }
 
@@ -1372,6 +1374,11 @@ func Unify(t1 Type, t2 Type, env *State) error {
 			return nil
 		}
 	case Record:
+		if b.GetName() == Unit.GetName() && a.(Record).External {
+			// external types can always be nil
+			return nil
+		}
+
 		switch b.(type) {
 		case Record:
 			aFieldLen := len(a.(Record).Fields)
@@ -1390,6 +1397,11 @@ func Unify(t1 Type, t2 Type, env *State) error {
 
 			return nil
 		}
+	}
+
+	switch b.(type) {
+	case TypeVariable:
+		return Unify(b, a, env)
 	}
 
 	return InferenceError{fmt.Sprintf("No match for these types, not unified:\n* %s\n* %s", a.GetName(), b.GetName())}

@@ -27,6 +27,7 @@ let main = {
 	let ugh = ErrorS("Bad smell")
 	let another = OkS("yo", "bro")
 	let juicy = Watermelon()
+	let result = Ok("hi")
 	let josh = Person{name: "Josh", age: 99}
 	println(josh.name)
 }

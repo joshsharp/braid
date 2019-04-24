@@ -128,6 +128,7 @@ func (o Operator) Compile(state State) (string, State) {
 		"<=": "<=",
 		">=": ">=",
 		"==": "==",
+		"!=": "!=",
 		"++": "+",
 	}
 
